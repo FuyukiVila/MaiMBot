@@ -123,5 +123,5 @@ if __name__ == "__main__":
     elif choice == "2":
         run_maimbot()
     elif choice == "3":
-        run_maimbot()
+        run_cmd("nb run", True)
         run_cmd("python src/gui/reasoning_gui.py", True)

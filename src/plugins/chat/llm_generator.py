@@ -18,13 +18,13 @@ config = driver.config
 
 class ResponseGenerator:
     def __init__(self):
-        self.model_r1 = LLM_request(model=global_config.llm_reasoning, temperature=1.3)
-        self.model_v3 = LLM_request(model=global_config.llm_normal, temperature=1.3)
+        self.model_r1 = LLM_request(model=global_config.llm_reasoning, temperature=0.7, max_tokens=1000)
+        self.model_v3 = LLM_request(model=global_config.llm_normal, temperature=0.7, max_tokens=1000)
         self.model_r1_distill = LLM_request(
-            model=global_config.llm_reasoning_minor, temperature=1.3
+            model=global_config.llm_reasoning_minor, temperature=0.7, max_tokens=1000
         )
         self.model_v25 = LLM_request(
-            model=global_config.llm_normal_minor, temperature=1.3
+            model=global_config.llm_normal_minor, temperature=0.7, max_tokens=1000
         )
         self.db = Database.get_instance()
         self.current_model_type = "r1"  # 默认使用 R1
