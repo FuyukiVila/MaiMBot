@@ -1,4 +1,10 @@
 @ECHO OFF
 chcp 65001
-call venv\Scripts\activate.bat
-py run.py
+if not exist "venv" (
+  python -m venv venv
+  call venv\Scripts\activate.bat
+  pip install -i https://mirrors.aliyun.com/pypi/simple --upgrade -r requirements.txt
+  ) else (
+  call venv\Scripts\activate.bat
+)
+python run.py
