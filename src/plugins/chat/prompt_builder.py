@@ -47,6 +47,8 @@ class PromptBuilder:
             relation_prompt = "关系一般"
             relation_prompt_2 = "发言或者回复"
 
+        relation_prompt = ""
+        relation_prompt_2 = ""
         # 开始构建prompt
 
         # 心情
