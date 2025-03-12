@@ -132,6 +132,9 @@ if __name__ == "__main__":
             print("已取消安装")
     elif choice == "2":
         run_maimbot()
-    elif choice == "3":
-        run_cmd("nb run", True)
-        run_cmd("python src/gui/reasoning_gui.py", True)
+        choice = input("是否启动推理可视化？（未完善）（y/N）").upper()
+        if choice == "Y":
+            run_cmd(r"python src\gui\reasoning_gui.py")
+        choice = input("是否启动记忆可视化？（未完善）（y/N）").upper()
+        if choice == "Y":
+            run_cmd(r"python src/plugins/memory_system/memory_manual_build.py")
