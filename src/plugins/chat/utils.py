@@ -339,7 +339,7 @@ def random_remove_punctuation(text: str) -> str:
 
 def process_llm_response(text: str) -> List[str]:
     # processed_response = process_text_with_typos(content)
-    if len(text) > 200:
+    if len(text) > 100:
         logger.warning(f"回复过长 ({len(text)} 字符)，返回默认回复")
         return ["懒得说"]
     # 处理长消息
@@ -363,7 +363,7 @@ def process_llm_response(text: str) -> List[str]:
             sentences.append(sentence)
     # 检查分割后的消息数量是否过多（超过3条）
 
-    while len(sentences) > 5:
+    while len(sentences) > 3:
         # 消息两两合并
         new_sentences = []
         for i in range(0, len(sentences), 2):
