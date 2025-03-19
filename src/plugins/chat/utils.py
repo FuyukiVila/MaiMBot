@@ -25,7 +25,6 @@ config = driver.config
 logger = get_module_logger("chat_utils")
 
 
-
 def db_message_to_str(message_dict: Dict) -> str:
     logger.debug(f"message_dict: {message_dict}")
     time_str = time.strftime("%m-%d %H:%M:%S", time.localtime(message_dict["time"]))
@@ -35,7 +34,7 @@ def db_message_to_str(message_dict: Dict) -> str:
             message_dict.get("user_nickname", ""),
             message_dict.get("user_cardname", ""),
         )
-    except:
+    except Exception:
         name = message_dict.get("user_nickname", "") or f"用户{message_dict['user_id']}"
     content = message_dict.get("processed_plain_text", "")
     result = f"[{time_str}] {name}: {content}\n"
@@ -58,16 +57,9 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> bool:
 
 async def get_embedding(text):
     """获取文本的embedding向量"""
-    llm = LLM_request(model=global_config.embedding,request_type = 'embedding')
+    llm = LLM_request(model=global_config.embedding, request_type="embedding")
     # return llm.get_embedding_sync(text)
     return await llm.get_embedding(text)
-
-
-def cosine_similarity(v1, v2):
-    dot_product = np.dot(v1, v2)
-    norm1 = np.linalg.norm(v1)
-    norm2 = np.linalg.norm(v2)
-    return dot_product / (norm1 * norm2)
 
 
 def calculate_information_content(text):
@@ -94,37 +86,43 @@ def get_closest_chat_from_db(length: int, timestamp: str):
         list: 消息记录列表，每个记录包含时间和文本信息
     """
     chat_records = []
-    closest_record = db.messages.find_one({"time": {"$lte": timestamp}}, sort=[('time', -1)])
-    
-    if closest_record:            
-        closest_time = closest_record['time']
-        chat_id = closest_record['chat_id']  # 获取chat_id
+    closest_record = db.messages.find_one({"time": {"$lte": timestamp}}, sort=[("time", -1)])
+
+    if closest_record:
+        closest_time = closest_record["time"]
+        chat_id = closest_record["chat_id"]  # 获取chat_id
         # 获取该时间戳之后的length条消息，保持相同的chat_id
-        chat_records = list(db.messages.find(
-            {
-                "time": {"$gt": closest_time},
-                "chat_id": chat_id  # 添加chat_id过滤
-            }
-        ).sort('time', 1).limit(length))
-        
+        chat_records = list(
+            db.messages.find(
+                {
+                    "time": {"$gt": closest_time},
+                    "chat_id": chat_id,  # 添加chat_id过滤
+                }
+            )
+            .sort("time", 1)
+            .limit(length)
+        )
+
         # 转换记录格式
         formatted_records = []
         for record in chat_records:
             # 兼容行为，前向兼容老数据
-            formatted_records.append({
-                '_id': record["_id"],
-                'time': record["time"],
-                'chat_id': record["chat_id"],
-                'detailed_plain_text': record.get("detailed_plain_text", ""),  # 添加文本内容
-                'memorized_times': record.get("memorized_times", 0)  # 添加记忆次数
-            })
-            
+            formatted_records.append(
+                {
+                    "_id": record["_id"],
+                    "time": record["time"],
+                    "chat_id": record["chat_id"],
+                    "detailed_plain_text": record.get("detailed_plain_text", ""),  # 添加文本内容
+                    "memorized_times": record.get("memorized_times", 0),  # 添加记忆次数
+                }
+            )
+
         return formatted_records
 
     return []
 
 
-async def get_recent_group_messages(chat_id:str, limit: int = 12) -> list:
+async def get_recent_group_messages(chat_id: str, limit: int = 12) -> list:
     """从数据库获取群组最近的消息记录
 
     Args:
@@ -136,9 +134,13 @@ async def get_recent_group_messages(chat_id:str, limit: int = 12) -> list:
     """
 
     # 从数据库获取最近消息
-    recent_messages = list(db.messages.find(
-        {"chat_id": chat_id},
-    ).sort("time", -1).limit(limit))
+    recent_messages = list(
+        db.messages.find(
+            {"chat_id": chat_id},
+        )
+        .sort("time", -1)
+        .limit(limit)
+    )
 
     if not recent_messages:
         return []
@@ -170,17 +172,21 @@ async def get_recent_group_messages(chat_id:str, limit: int = 12) -> list:
 
 
 def get_recent_group_detailed_plain_text(chat_stream_id: int, limit: int = 12, combine=False):
-    recent_messages = list(db.messages.find(
-        {"chat_id": chat_stream_id},
-        {
-            "time": 1,  # 返回时间字段
-            "chat_id":1,
-            "chat_info":1,
-            "user_info": 1,
-            "message_id": 1,  # 返回消息ID字段
-            "detailed_plain_text": 1  # 返回处理后的文本字段
-        }
-    ).sort("time", -1).limit(limit))
+    recent_messages = list(
+        db.messages.find(
+            {"chat_id": chat_stream_id},
+            {
+                "time": 1,  # 返回时间字段
+                "chat_id": 1,
+                "chat_info": 1,
+                "user_info": 1,
+                "message_id": 1,  # 返回消息ID字段
+                "detailed_plain_text": 1,  # 返回处理后的文本字段
+            },
+        )
+        .sort("time", -1)
+        .limit(limit)
+    )
 
     if not recent_messages:
         return []
@@ -203,13 +209,17 @@ def get_recent_group_detailed_plain_text(chat_stream_id: int, limit: int = 12, c
 
 def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> list:
     # 获取当前群聊记录内发言的人
-    recent_messages = list(db.messages.find(
-        {"chat_id": chat_stream_id},
-        {
-            "chat_info": 1,
-            "user_info": 1,
-        }
-    ).sort("time", -1).limit(limit))
+    recent_messages = list(
+        db.messages.find(
+            {"chat_id": chat_stream_id},
+            {
+                "chat_info": 1,
+                "user_info": 1,
+            },
+        )
+        .sort("time", -1)
+        .limit(limit)
+    )
 
     if not recent_messages:
         return []
@@ -219,11 +229,12 @@ def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> li
     duplicate_removal = []
     for msg_db_data in recent_messages:
         user_info = UserInfo.from_dict(msg_db_data["user_info"])
-        if (user_info.user_id, user_info.platform) != sender \
-                and (user_info.user_id, user_info.platform) != (global_config.BOT_QQ, "qq") \
-                and (user_info.user_id, user_info.platform) not in duplicate_removal \
-                and len(duplicate_removal) < 5:  # 排除重复，排除消息发送者，排除bot(此处bot的平台强制为了qq，可能需要更改)，限制加载的关系数目
-
+        if (
+            (user_info.user_id, user_info.platform) != sender
+            and (user_info.user_id, user_info.platform) != (global_config.BOT_QQ, "qq")
+            and (user_info.user_id, user_info.platform) not in duplicate_removal
+            and len(duplicate_removal) < 5
+        ):  # 排除重复，排除消息发送者，排除bot(此处bot的平台强制为了qq，可能需要更改)，限制加载的关系数目
             duplicate_removal.append((user_info.user_id, user_info.platform))
             chat_info = msg_db_data.get("chat_info", {})
             who_chat_in_group.append(ChatStream.from_dict(chat_info))
@@ -255,8 +266,8 @@ def split_into_sentences_w_remove_punctuation(text: str) -> List[str]:
     # print(f"处理前的文本: {text}")
 
     # 统一将英文逗号转换为中文逗号
-    text = text.replace(',', '，')
-    text = text.replace('\n', ' ')
+    text = text.replace(",", "，")
+    text = text.replace("\n", " ")
     text, mapping = protect_kaomoji(text)
     # print(f"处理前的文本: {text}")
 
@@ -466,7 +477,7 @@ def truncate_message(message: str, max_length=20) -> str:
 
 
 def protect_kaomoji(sentence):
-    """"
+    """ "
     识别并保护句子中的颜文字（含括号与无括号），将其替换为占位符，
     并返回替换后的句子和占位符到颜文字的映射表。
     Args:
@@ -475,17 +486,17 @@ def protect_kaomoji(sentence):
         tuple: (处理后的句子, {占位符: 颜文字})
     """
     kaomoji_pattern = re.compile(
-        r'('
-        r'[\(\[（【]'             # 左括号
-        r'[^()\[\]（）【】]*?'   # 非括号字符（惰性匹配）
-        r'[^\u4e00-\u9fa5a-zA-Z0-9\s]'  # 非中文、非英文、非数字、非空格字符（必须包含至少一个）
-        r'[^()\[\]（）【】]*?'   # 非括号字符（惰性匹配）
-        r'[\)\]）】]'             # 右括号
-        r')'
-        r'|'
-        r'('
-        r'[▼▽・ᴥω･﹏^><≧≦￣｀´∀ヮДд︿﹀へ｡ﾟ╥╯╰︶︹•⁄]{2,15}'
-        r')'
+        r"("
+        r"[\(\[（【]"  # 左括号
+        r"[^()\[\]（）【】]*?"  # 非括号字符（惰性匹配）
+        r"[^\u4e00-\u9fa5a-zA-Z0-9\s]"  # 非中文、非英文、非数字、非空格字符（必须包含至少一个）
+        r"[^()\[\]（）【】]*?"  # 非括号字符（惰性匹配）
+        r"[\)\]）】]"  # 右括号
+        r")"
+        r"|"
+        r"("
+        r"[▼▽・ᴥω･﹏^><≧≦￣｀´∀ヮДд︿﹀へ｡ﾟ╥╯╰︶︹•⁄]{2,15}"
+        r")"
     )
 
     kaomoji_matches = kaomoji_pattern.findall(sentence)
@@ -493,7 +504,7 @@ def protect_kaomoji(sentence):
 
     for idx, match in enumerate(kaomoji_matches):
         kaomoji = match[0] if match[0] else match[1]
-        placeholder = f'__KAOMOJI_{idx}__'
+        placeholder = f"__KAOMOJI_{idx}__"
         sentence = sentence.replace(kaomoji, placeholder, 1)
         placeholder_to_kaomoji[placeholder] = kaomoji
 

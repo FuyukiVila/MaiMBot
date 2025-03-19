@@ -18,7 +18,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # 获取项目根目录
 root_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
 sys.path.insert(0, root_dir)
-from src.common.database import db
+from src.common.database import db  # noqa: E402
 
 # 加载环境变量
 if os.path.exists(os.path.join(root_dir, ".env.dev")):
@@ -121,9 +121,7 @@ class ReasoningGUI:
         self.control_frame = ctk.CTkFrame(self.frame)
         self.control_frame.pack(fill="x", padx=10, pady=5)
 
-        self.clear_button = ctk.CTkButton(
-            self.control_frame, text="清除显示", command=self.clear_display, width=120
-        )
+        self.clear_button = ctk.CTkButton(self.control_frame, text="清除显示", command=self.clear_display, width=120)
         self.clear_button.pack(side="left", padx=5)
 
         # 启动自动更新线程
@@ -325,12 +323,7 @@ class ReasoningGUI:
                             or self.selected_group_id not in self.group_data
                         ):
                             self.selected_group_id = next(iter(self.group_data))
-                        self.update_queue.put(
-                            {
-                                "type": "update_display",
-                                "group_id": self.selected_group_id,
-                            }
-                        )
+                        self.update_queue.put({"type": "update_display", "group_id": self.selected_group_id})
             except Exception:
                 logger.exception("自动更新出错")
 
