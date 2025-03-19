@@ -183,6 +183,9 @@ class LLM_request:
 
         # 构建请求体
         if image_base64:
+            # 处理通义VL上传图片大小大于10m的问题
+            if len(base64.b64decode(image_base64)) > 10 * 1024 * 1024:
+                image_base64 = compress_base64_image_by_scale(image_base64)
             payload = await self._build_payload(prompt, image_base64, image_format)
         elif payload is None:
             payload = await self._build_payload(prompt)
