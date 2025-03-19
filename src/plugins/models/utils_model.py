@@ -601,11 +601,11 @@ class LLM_request:
         return embedding
 
 
-def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 1024 * 1024) -> str:
+def compress_base64_image_by_scale(base64_data: str, target_size: int = 2 * 1024 * 1024) -> str:
     """压缩base64格式的图片到指定大小
     Args:
         base64_data: base64编码的图片数据
-        target_size: 目标文件大小（字节），默认0.8MB
+        target_size: 目标文件大小（字节），默认2MB
     Returns:
         str: 压缩后的base64图片数据
     """
