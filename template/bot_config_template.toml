@@ -184,7 +184,7 @@ pri_out = 0
 # 识图模型
 
 [model.vlm] #图像识别 0.35/m
-name = "Pro/Qwen/Qwen2-VL-7B-Instruct"
+name = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
 provider = "SILICONFLOW"
 
 #嵌入模型
