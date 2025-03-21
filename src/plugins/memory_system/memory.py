@@ -174,9 +174,9 @@ class Memory_graph:
 class Hippocampus:
     def __init__(self, memory_graph: Memory_graph):
         self.memory_graph = memory_graph
-        self.llm_topic_judge = LLM_request(model=global_config.llm_topic_judge, temperature=0.5, request_type="topic")
+        self.llm_topic_judge = LLM_request(model=global_config.llm_topic_judge, temperature=0.5, request_type="memory")
         self.llm_summary_by_topic = LLM_request(
-            model=global_config.llm_summary_by_topic, temperature=0.5, request_type="topic"
+            model=global_config.llm_summary_by_topic, temperature=0.5, request_type="memory"
         )
 
     def get_all_node_names(self) -> list:
@@ -375,8 +375,11 @@ class Hippocampus:
         return topic_num
 
     async def operation_build_memory(self):
+        logger.debug("------------------------------------开始构建记忆--------------------------------------")
+        start_time = time.time()
         memory_samples = self.get_memory_sample()
         all_added_nodes = []
+        all_connected_nodes = []
         all_added_edges = []
         for i, messages in enumerate(memory_samples, 1):
             all_topics = []
@@ -394,6 +397,7 @@ class Hippocampus:
             current_time = datetime.datetime.now().timestamp()
             logger.debug(f"添加节点: {', '.join(topic for topic, _ in compressed_memory)}")
             all_added_nodes.extend(topic for topic, _ in compressed_memory)
+            # all_connected_nodes.extend(topic for topic, _ in similar_topics_dict)
             
             for topic, memory in compressed_memory:
                 self.memory_graph.add_dot(topic, memory)
@@ -405,8 +409,13 @@ class Hippocampus:
                     for similar_topic, similarity in similar_topics:
                         if topic != similar_topic:
                             strength = int(similarity * 10)
+                            
                             logger.debug(f"连接相似节点: {topic} 和 {similar_topic} (强度: {strength})")
                             all_added_edges.append(f"{topic}-{similar_topic}")
+                            
+                            all_connected_nodes.append(topic)
+                            all_connected_nodes.append(similar_topic)
+                            
                             self.memory_graph.G.add_edge(
                                 topic,
                                 similar_topic,
@@ -423,9 +432,16 @@ class Hippocampus:
                     self.memory_graph.connect_dot(all_topics[i], all_topics[j])
 
         logger.success(f"更新记忆: {', '.join(all_added_nodes)}")
-        logger.success(f"强化连接: {', '.join(all_added_edges)}")
+        logger.debug(f"强化连接: {', '.join(all_added_edges)}")
+        logger.info(f"强化连接节点: {', '.join(all_connected_nodes)}")
         # logger.success(f"强化连接: {', '.join(all_added_edges)}")
         self.sync_memory_to_db()
+        
+        end_time = time.time()
+        logger.success(
+            f"--------------------------记忆构建完成：耗时: {end_time - start_time:.2f} "
+            "秒--------------------------"
+        )
 
     def sync_memory_to_db(self):
         """检查并同步内存中的图结构与数据库"""
@@ -852,10 +868,9 @@ class Hippocampus:
 
     async def memory_activate_value(self, text: str, max_topics: int = 5, similarity_threshold: float = 0.3) -> int:
         """计算输入文本对记忆的激活程度"""
-        logger.info(f"识别主题: {await self._identify_topics(text)}")
-
         # 识别主题
         identified_topics = await self._identify_topics(text)
+        
         if not identified_topics:
             return 0
 
@@ -916,7 +931,8 @@ class Hippocampus:
 
         # 计算最终激活值
         activation = int((topic_match + average_similarities) / 2 * 100)
-        logger.info(f"匹配率: {topic_match:.3f}, 平均相似度: {average_similarities:.3f}, 激活值: {activation}")
+        
+        logger.info(f"识别主题: {identified_topics}, 匹配率: {topic_match:.3f}, 激活值: {activation}")
 
         return activation
 
