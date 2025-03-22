@@ -2,6 +2,39 @@
 name = "MaiMaiBot"
 version = "0.1.0"
 description = "MaiMaiBot"
+dependencies = [
+    "aiohttp>=3.11.14",
+    "apscheduler>=3.11.0",
+    "colorama>=0.4.6",
+    "customtkinter>=5.2.2",
+    "dotenv>=0.9.9",
+    "gradio>=5.22.0",
+    "jieba>=0.42.1",
+    "loguru>=0.7.3",
+    "matplotlib>=3.10.1",
+    "nb-cli>=1.4.2",
+    "networkx>=3.4.2",
+    "nonebot-adapter-onebot>=2.4.6",
+    "nonebot-plugin-apscheduler>=0.5.0",
+    "nonebot2[fastapi]>=2.4.2",
+    "numpy>=2.2.4",
+    "openai>=1.68.2",
+    "pandas>=2.2.3",
+    "pillow>=11.1.0",
+    "pydantic>=2.10.6",
+    "pymongo>=4.11.3",
+    "pypinyin>=0.53.0",
+    "python-dateutil>=2.9.0.post0",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+    "ruff>=0.11.2",
+    "scipy>=1.15.2",
+    "setuptools>=77.0.3",
+    "toml>=0.10.2",
+    "tomli>=2.2.1",
+    "tomlkit>=0.13.2",
+    "urllib3>=2.3.0",
+]
 
 [tool.nonebot]
 plugins = ["src.plugins.chat"]
