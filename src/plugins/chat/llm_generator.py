@@ -31,7 +31,6 @@ class ResponseGenerator:
             model=global_config.llm_reasoning,
             temperature=0.7,
             max_tokens=1000,
-            stream=True,
             request_type="response",
         )
         self.model_v3 = LLM_request(
