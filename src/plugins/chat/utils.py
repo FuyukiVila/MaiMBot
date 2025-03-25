@@ -271,11 +271,11 @@ def split_into_sentences_w_remove_punctuation(text: str) -> List[str]:
     text_no_1 = ""
     for letter in text:
         # print(f"当前字符: {letter}")
-        if letter in ["!", "！", "?", "？"]:
+        if letter in ["!", "！"]:
             # print(f"当前字符: {letter}, 随机数: {random.random()}")
             if random.random() < split_strength:
                 letter = ""
-        if letter in ["。", "…"]:
+        if letter in ["。"]:
             # print(f"当前字符: {letter}, 随机数: {random.random()}")
             if random.random() < 1 - split_strength:
                 letter = ""
@@ -390,10 +390,18 @@ def process_llm_response(text: str) -> List[str]:
             sentences.append(sentence)
     # 检查分割后的消息数量是否过多（超过3条）
 
-    if len(sentences) > max_sentence_num:
-        logger.warning(f"分割后消息数量过多 ({len(sentences)} 条)，返回默认回复")
-        return [f"{global_config.BOT_NICKNAME}不知道哦"]
-
+    while len(sentences) > max_sentence_num:
+        # 两两合并句子
+        merged_sentences = []
+        for i in range(0, len(sentences), 2):
+            if i + 1 < len(sentences):
+                merged_sentences.append(sentences[i] + "，" + sentences[i + 1])
+            else:
+                merged_sentences.append(sentences[i])
+        sentences = merged_sentences
+        # logger.warning(f"分割后消息数量过多 ({len(sentences)} 条)，返回默认回复")
+        # return [f"{global_config.BOT_NICKNAME}不知道哦"]
+    logger.debug(f"处理后的句子: {sentences}")
     return sentences
 
 
