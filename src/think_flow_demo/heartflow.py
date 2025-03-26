@@ -30,7 +30,7 @@ class Heartflow:
 
     async def heartflow_start_working(self):
         while True:
-            await self.do_a_thinking()
+            # await self.do_a_thinking()
             await asyncio.sleep(60)
     
     async def do_a_thinking(self):
