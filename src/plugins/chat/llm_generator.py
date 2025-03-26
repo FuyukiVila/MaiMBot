@@ -37,7 +37,8 @@ class ResponseGenerator:
             model=global_config.llm_normal, temperature=0.7, max_tokens=3000, request_type="response"
         )
         self.model_r1_distill = LLM_request(
-            model=global_config.llm_reasoning_minor, temperature=0.7, max_tokens=3000, request_type="response"
+            model=global_config.llm_reasoning_minor, temperature=0.7, max_tokens=3000, request_type="response",
+            stream=True
         )
         self.model_sum = LLM_request(
             model=global_config.llm_summary_by_topic, temperature=0.7, max_tokens=3000, request_type="relation"
