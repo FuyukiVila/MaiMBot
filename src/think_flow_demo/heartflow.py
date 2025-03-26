@@ -41,7 +41,7 @@ class Heartflow:
             await asyncio.sleep(600)
 
     async def do_a_thinking(self):
-        logger.info("麦麦大脑袋转起来了")
+        logger.info(f"{global_config.BOT_NICKNAME}大脑袋转起来了")
         self.current_state.update_current_state_info()
 
         personality_info = open("src/think_flow_demo/personality_info.txt", "r", encoding="utf-8").read()
