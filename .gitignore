@@ -7,6 +7,7 @@ logs/
 /test
 /src/test
 .vscode/
+src/think_flow_demo/personality_info.txt
 message_queue_content.txt
 message_queue_content.bat
 message_queue_window.bat
