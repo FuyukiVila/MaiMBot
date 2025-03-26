@@ -5,6 +5,8 @@ from src.plugins.models.utils_model import LLM_request
 from src.plugins.chat.config import global_config
 import re
 import time
+from src.plugins.schedule.schedule_generator import bot_schedule
+
 class CuttentState:
     def __init__(self):
         self.willing = 0
@@ -44,11 +46,11 @@ class SubHeartflow:
             current_time = time.time()
             if current_time - self.last_reply_time > 180:  # 3分钟 = 180秒
                 # print(f"{self.observe_chat_id}麦麦已经3分钟没有回复了，暂时停止思考")
-                await asyncio.sleep(25)  # 每30秒检查一次
+                await asyncio.sleep(60)  # 每30秒检查一次
             else:
                 await self.do_a_thinking()
                 await self.judge_willing()
-                await asyncio.sleep(25)
+                await asyncio.sleep(60)
     
     async def do_a_thinking(self):
         print(f"{global_config.BOT_NICKNAME}小脑袋转起来了")
@@ -57,10 +59,12 @@ class SubHeartflow:
         personality_info = open("src/think_flow_demo/personality_info.txt", "r", encoding="utf-8").read()
         current_thinking_info = self.current_mind
         mood_info = self.current_state.mood
-        related_memory_info = 'memory'
+        related_memory_info = ''
         message_stream_info = self.outer_world.talking_summary
+        schedule_info = bot_schedule.get_current_num_task(num = 2,time_info = False)
         
         prompt = ""
+        prompt += f"你刚刚在做的事情是：{schedule_info}\n"
         # prompt += f"{global_config.BOT_NICKNAME}的总体想法是：{self.main_heartflow_info}\n\n"
         prompt += f"{personality_info}\n"
         prompt += f"现在你正在上网，和qq群里的网友们聊天，群里正在聊的话题是：{message_stream_info}\n"
