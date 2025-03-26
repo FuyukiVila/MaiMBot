@@ -39,12 +39,12 @@ class SubHeartflow:
     async def subheartflow_start_working(self):
         while True:
             await self.do_a_thinking()
-            print("麦麦闹情绪了")
+            print(f"{global_config.BOT_NICKNAME}闹情绪了")
             await self.judge_willing()
             await asyncio.sleep(30)
     
     async def do_a_thinking(self):
-        print("麦麦小脑袋转起来了")
+        print(f"{global_config.BOT_NICKNAME}小脑袋转起来了")
         self.current_state.update_current_state_info()
         
         personality_info = open("src/think_flow_demo/personality_info.txt", "r", encoding="utf-8").read()
@@ -54,7 +54,7 @@ class SubHeartflow:
         message_stream_info = self.outer_world.talking_summary
         
         prompt = ""
-        # prompt += f"麦麦的总体想法是：{self.main_heartflow_info}\n\n"
+        # prompt += f"{global_config.BOT_NICKNAME}的总体想法是：{self.main_heartflow_info}\n\n"
         prompt += f"{personality_info}\n"
         prompt += f"现在你正在上网，和qq群里的网友们聊天，群里正在聊的话题是：{message_stream_info}\n"
         prompt += f"你想起来{related_memory_info}。"
@@ -67,7 +67,7 @@ class SubHeartflow:
         self.update_current_mind(reponse)
         
         self.current_mind = reponse
-        print(f"麦麦的脑内状态：{self.current_mind}")
+        print(f"{global_config.BOT_NICKNAME}的脑内状态：{self.current_mind}")
     
     async def do_after_reply(self,reply_content,chat_talking_prompt):
         # print("麦麦脑袋转起来了")
@@ -84,7 +84,7 @@ class SubHeartflow:
         prompt = ""
         prompt += f"{personality_info}\n"
         prompt += f"现在你正在上网，和qq群里的网友们聊天，群里正在聊的话题是：{message_stream_info}\n"
-        prompt += f"你想起来{related_memory_info}。"
+        # prompt += f"你想起来{related_memory_info}。"
         prompt += f"刚刚你的想法是{current_thinking_info}。"
         prompt += f"你现在看到了网友们发的新消息:{message_new_info}\n"
         prompt += f"你刚刚回复了群友们:{reply_info}"
@@ -97,7 +97,7 @@ class SubHeartflow:
         self.update_current_mind(reponse)
         
         self.current_mind = reponse
-        print(f"{self.observe_chat_id}麦麦的脑内状态：{self.current_mind}")
+        print(f"{self.observe_chat_id}{global_config.BOT_NICKNAME}的脑内状态：{self.current_mind}")
         
     async def judge_willing(self):
         # print("麦麦闹情绪了1")
@@ -121,7 +121,7 @@ class SubHeartflow:
         else:
             self.current_state.willing = 0
             
-        print(f"{self.observe_chat_id}麦麦的回复意愿：{self.current_state.willing}")
+        print(f"{self.observe_chat_id}{global_config.BOT_NICKNAME}的回复意愿：{self.current_state.willing}")
             
         return self.current_state.willing
 

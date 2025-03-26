@@ -34,7 +34,7 @@ class Heartflow:
             await asyncio.sleep(60)
     
     async def do_a_thinking(self):
-        print("麦麦大脑袋转起来了")
+        print(f"{global_config.BOT_NICKNAME}大脑袋转起来了")
         self.current_state.update_current_state_info()
         
         personality_info = open("src/think_flow_demo/personality_info.txt", "r", encoding="utf-8").read()
@@ -46,7 +46,7 @@ class Heartflow:
         prompt = ""
         prompt += f"{personality_info}\n"
         # prompt += f"现在你正在上网，和qq群里的网友们聊天，群里正在聊的话题是：{message_stream_info}\n"
-        prompt += f"你想起来{related_memory_info}。"
+        # prompt += f"你想起来{related_memory_info}。"
         prompt += f"刚刚你的主要想法是{current_thinking_info}。"
         prompt += f"你还有一些小想法，因为你在参加不同的群聊天，是你正在做的事情：{sub_flows_info}\n"
         prompt += f"你现在{mood_info}。"
@@ -58,7 +58,7 @@ class Heartflow:
         self.update_current_mind(reponse)
         
         self.current_mind = reponse
-        print(f"麦麦的总体脑内状态：{self.current_mind}")
+        print(f"{global_config.BOT_NICKNAME}的总体脑内状态：{self.current_mind}")
         
         for _, subheartflow in self._subheartflows.items():
             subheartflow.main_heartflow_info = reponse
