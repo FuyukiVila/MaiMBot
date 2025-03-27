@@ -18,18 +18,18 @@ class BotConfig:
 
     INNER_VERSION: Version = None
     MAI_VERSION: Version = None
-    
+
     # bot
     BOT_QQ: Optional[int] = 114514
     BOT_NICKNAME: Optional[str] = None
     BOT_ALIAS_NAMES: List[str] = field(default_factory=list)  # 别名，可以通过这个叫它
-    
+
     # group
     talk_allowed_groups = set()
     talk_frequency_down_groups = set()
     ban_user_id = set()
-    
-    #personality
+
+    # personality
     PROMPT_PERSONALITY = [
         "用一句话或几句话描述性格特点和其他特征",    
         "例如，是一个热爱国家热爱党的新时代好青年",    
@@ -38,7 +38,8 @@ class BotConfig:
     PERSONALITY_1: float = 0.6  # 第一种人格概率
     PERSONALITY_2: float = 0.3  # 第二种人格概率
     PERSONALITY_3: float = 0.1  # 第三种人格概率
-    
+    COMMON_PERSONALITY: str = ""
+
     # schedule
     ENABLE_SCHEDULE_GEN: bool = False  # 是否启用日程生成
     PROMPT_SCHEDULE_GEN = "无日程"
@@ -49,17 +50,17 @@ class BotConfig:
     emoji_chance: float = 0.2  # 发送表情包的基础概率
     thinking_timeout: int = 120  # 思考时间
     max_response_length: int = 1024  # 最大回复长度
-    
+
     ban_words = set()
     ban_msgs_regex = set()
-    
+
     # willing
     willing_mode: str = "classical"  # 意愿模式
     response_willing_amplifier: float = 1.0  # 回复意愿放大系数
     response_interested_rate_amplifier: float = 1.0  # 回复兴趣度放大系数
     down_frequency_rate: float = 3  # 降低回复频率的群组回复意愿降低系数
     emoji_response_penalty: float = 0.0  # 表情包回复惩罚
-    
+
     # response
     MODEL_R1_PROBABILITY: float = 0.8  # R1模型概率
     MODEL_V3_PROBABILITY: float = 0.1  # V3模型概率
@@ -80,11 +81,11 @@ class BotConfig:
     build_memory_sample_num: int = 10  # 记忆构建采样数量
     build_memory_sample_length: int = 20  # 记忆构建采样长度
     memory_compress_rate: float = 0.1  # 记忆压缩率
-    
+
     forget_memory_interval: int = 600  # 记忆遗忘间隔（秒）
     memory_forget_time: int = 24  # 记忆遗忘时间（小时）
     memory_forget_percentage: float = 0.01  # 记忆遗忘比例
-    
+
     memory_ban_words: list = field(
         default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"]
     )  # 添加新的配置项默认值
@@ -93,30 +94,28 @@ class BotConfig:
     mood_update_interval: float = 1.0  # 情绪更新间隔 单位秒
     mood_decay_rate: float = 0.95  # 情绪衰减率
     mood_intensity_factor: float = 0.7  # 情绪强度因子
-    
+
     # keywords
     keywords_reaction_rules = []  # 关键词回复规则
-    
+
     # chinese_typo
     chinese_typo_enable = True  # 是否启用中文错别字生成器
     chinese_typo_error_rate = 0.03  # 单字替换概率
     chinese_typo_min_freq = 7  # 最小字频阈值
     chinese_typo_tone_error_rate = 0.2  # 声调错误概率
     chinese_typo_word_replace_rate = 0.02  # 整词替换概率
-    
-    #response_spliter
+
+    # response_spliter
     enable_response_spliter = True  # 是否启用回复分割器
     response_max_length = 100 # 回复允许的最大长度
     response_max_sentence_num = 3 # 回复允许的最大句子数    
 
     # remote
     remote_enable: bool = True  # 是否启用远程控制
-    
+
     # experimental
     enable_friend_chat: bool = False  # 是否启用好友聊天
     enable_think_flow: bool = False  # 是否启用思考流程
-    
-    
 
     # 模型配置
     llm_reasoning: Dict[str, str] = field(default_factory=lambda: {})
@@ -133,7 +132,6 @@ class BotConfig:
     llm_outer_world: Dict[str, str] = field(default_factory=lambda: {})
     llm_sub_heartflow: Dict[str, str] = field(default_factory=lambda: {})
     llm_heartflow: Dict[str, str] = field(default_factory=lambda: {})
-
 
     @staticmethod
     def get_config_dir() -> str:
@@ -197,7 +195,7 @@ class BotConfig:
     def load_config(cls, config_path: str = None) -> "BotConfig":
         """从TOML配置文件加载配置"""
         config = cls()
-        
+
         def mai_version(parent: dict):
             mai_version_config = parent["mai_version"]
             version = mai_version_config.get("version")
@@ -207,15 +205,16 @@ class BotConfig:
         def personality(parent: dict):
             personality_config = parent["personality"]
             personality = personality_config.get("prompt_personality")
+            config.COMMON_PERSONALITY = personality_config.get("common_personality", config.COMMON_PERSONALITY)
             if len(personality) >= 2:
                 logger.debug(f"载入自定义人格:{personality}")
                 config.PROMPT_PERSONALITY = personality_config.get("prompt_personality", config.PROMPT_PERSONALITY)
-            
+
             if config.INNER_VERSION in SpecifierSet(">=0.0.2"):
                 config.PERSONALITY_1 = personality_config.get("personality_1_probability", config.PERSONALITY_1)
                 config.PERSONALITY_2 = personality_config.get("personality_2_probability", config.PERSONALITY_2)
                 config.PERSONALITY_3 = personality_config.get("personality_3_probability", config.PERSONALITY_3)
-        
+
         def schedule(parent: dict):
             schedule_config = parent["schedule"]
             config.ENABLE_SCHEDULE_GEN = schedule_config.get("enable_schedule_gen", config.ENABLE_SCHEDULE_GEN)
@@ -255,7 +254,7 @@ class BotConfig:
         def willing(parent: dict):
             willing_config = parent["willing"]
             config.willing_mode = willing_config.get("willing_mode", config.willing_mode)
-            
+
             if config.INNER_VERSION in SpecifierSet(">=0.0.11"):
                 config.response_willing_amplifier = willing_config.get(
                     "response_willing_amplifier", config.response_willing_amplifier)
@@ -264,7 +263,7 @@ class BotConfig:
                 config.down_frequency_rate = willing_config.get("down_frequency_rate", config.down_frequency_rate)
                 config.emoji_response_penalty = willing_config.get(
                     "emoji_response_penalty", config.emoji_response_penalty)
-                
+
         def model(parent: dict):
             # 加载模型配置
             model_config: dict = parent["model"]
@@ -343,7 +342,7 @@ class BotConfig:
 
             if config.INNER_VERSION in SpecifierSet(">=0.0.6"):
                 config.ban_msgs_regex = msg_config.get("ban_msgs_regex", config.ban_msgs_regex)
-                
+
             if config.INNER_VERSION in SpecifierSet(">=0.0.11"):
                 config.max_response_length = msg_config.get("max_response_length", config.max_response_length)
         def memory(parent: dict):
@@ -375,7 +374,6 @@ class BotConfig:
                     config.build_memory_sample_length
                 )
 
-
         def remote(parent: dict):
             remote_config = parent["remote"]
             config.remote_enable = remote_config.get("enable", config.remote_enable)
@@ -402,7 +400,7 @@ class BotConfig:
             config.chinese_typo_word_replace_rate = chinese_typo_config.get(
                 "word_replace_rate", config.chinese_typo_word_replace_rate
             )
-            
+
         def response_spliter(parent: dict):
             response_spliter_config = parent["response_spliter"]
             config.enable_response_spliter = response_spliter_config.get(
@@ -421,7 +419,7 @@ class BotConfig:
             experimental_config = parent["experimental"]
             config.enable_friend_chat = experimental_config.get("enable_friend_chat", config.enable_friend_chat)
             config.enable_think_flow = experimental_config.get("enable_think_flow", config.enable_think_flow)
-            
+
         # 版本表达式：>=1.0.0,<2.0.0
         # 允许字段：func: method, support: str, notice: str, necessary: bool
         # 如果使用 notice 字段，在该组配置加载时，会展示该字段对用户的警示

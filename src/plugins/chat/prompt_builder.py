@@ -127,6 +127,7 @@ class PromptBuilder:
             prompt_personality = personality[1]
         else:  # 第三种人格
             prompt_personality = personality[2]
+        prompt_personality += global_config.COMMON_PERSONALITY
 
         # 中文高手(新加的好玩功能)
         prompt_ger = ""
