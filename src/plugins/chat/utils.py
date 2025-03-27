@@ -322,30 +322,18 @@ def remove_reference_marks(text: str) -> str:
     return re.sub(r'\[\d+\]', '', text)
 
 
-def remove_start_with_symbols(text: str) -> str:
-    """
-    去除文本开头的符号(标点符号、空白符等)
-    
-    参数:
-        text (str): 输入文本
-    
-    返回:
-        处理后的文本
-    
-    优化说明:
-        1. 使用正则表达式一次性移除所有开头符号，效率更高
-        2. 处理空字符串情况避免IndexError
-        3. 扩展支持的符号范围，包括更多标点符号和空白符
-    """
-    if not text:
+def get_text_after_double_newlines(text):
+    parts = re.split(r"\n{2,}", text)
+    if len(parts) > 1:
+        return parts[-1]
+    else:
         return text
-    return re.sub(r"^[\s\W_]+", "", text)
 
 
 def process_llm_response(text: str) -> List[str]:
     # 移除引用标记和开头的符号，兼容联网搜索模型
     text = remove_reference_marks(text)
-    text = remove_start_with_symbols(text)
+    text = get_text_after_double_newlines(text)
     # processed_response = process_text_with_typos(content)
     # 对西文字符段落的回复长度设置为汉字字符的两倍
     max_length = global_config.response_max_length
