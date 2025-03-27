@@ -318,11 +318,33 @@ def remove_reference_marks(text: str) -> str:
         \d+ 匹配1个或多个数字
         \] 匹配右方括号(需要转义)
     """
+    if not text:
+        return text
     return re.sub(r'\[\d+\]', '', text)
 
+def remove_start_with_symbols(text: str) -> str:
+    """
+    去除文本开头的符号(标点符号、空白符等)
+    
+    参数:
+        text (str): 输入文本
+    
+    返回:
+        处理后的文本
+    
+    优化说明:
+        1. 使用正则表达式一次性移除所有开头符号，效率更高
+        2. 处理空字符串情况避免IndexError
+        3. 扩展支持的符号范围，包括更多标点符号和空白符
+    """
+    if not text:
+        return text
+    return re.sub(r'^[\s\p{P}\p{Z}]+', '', text)
+
 def process_llm_response(text: str) -> List[str]:
-    # 移除引用标记，兼容联网搜索模型
+    # 移除引用标记和开头的符号，兼容联网搜索模型
     text = remove_reference_marks(text)
+    text = remove_start_with_symbols(text)
     # processed_response = process_text_with_typos(content)
     # 对西文字符段落的回复长度设置为汉字字符的两倍
     max_length = global_config.response_max_length
