@@ -62,7 +62,6 @@ async def get_embedding(text, request_type="embedding"):
     return await llm.get_embedding(text)
 
 
-
 async def get_recent_group_messages(chat_id: str, limit: int = 12) -> list:
     """从数据库获取群组最近的消息记录
 
@@ -322,6 +321,7 @@ def remove_reference_marks(text: str) -> str:
         return text
     return re.sub(r'\[\d+\]', '', text)
 
+
 def remove_start_with_symbols(text: str) -> str:
     """
     去除文本开头的符号(标点符号、空白符等)
@@ -339,7 +339,8 @@ def remove_start_with_symbols(text: str) -> str:
     """
     if not text:
         return text
-    return re.sub(r'^[\s\p{P}\p{Z}]+', '', text)
+    return re.sub(r"^[\s\W_]+", "", text)
+
 
 def process_llm_response(text: str) -> List[str]:
     # 移除引用标记和开头的符号，兼容联网搜索模型
@@ -526,7 +527,7 @@ def recover_kaomoji(sentences, placeholder_to_kaomoji):
         recovered_sentences.append(sentence)
     return recovered_sentences
 
-  
+
 def is_western_char(char):
     """检测是否为西文字符"""
     return len(char.encode('utf-8')) <= 2
@@ -534,4 +535,3 @@ def is_western_char(char):
 def is_western_paragraph(paragraph):
     """检测是否为西文字符段落"""
     return all(is_western_char(char) for char in paragraph if char.isalnum())
-  
