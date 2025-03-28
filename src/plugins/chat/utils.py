@@ -301,38 +301,7 @@ def random_remove_punctuation(text: str) -> str:
     return result
 
 
-def remove_reference_marks(text: str) -> str:
-    """移除文本中的引用标记（如[1]）
-    
-    参数:
-        text: 包含引用标记的文本
-        
-    返回:
-        移除所有类似[数字]格式标记后的文本
-        
-    正则表达式说明:
-        r'\[\d+\]' 匹配方括号中包含1个或多个数字的模式
-        \[ 匹配左方括号(需要转义)
-        \d+ 匹配1个或多个数字
-        \] 匹配右方括号(需要转义)
-    """
-    if not text:
-        return text
-    return re.sub(r'\[\d+\]', '', text)
-
-
-def get_text_after_double_newlines(text):
-    parts = re.split(r"\n{2,}", text)
-    if len(parts) > 1:
-        return parts[-1]
-    else:
-        return text
-
-
 def process_llm_response(text: str) -> List[str]:
-    # 移除引用标记和开头的符号，兼容联网搜索模型
-    text = remove_reference_marks(text)
-    text = get_text_after_double_newlines(text)
     # processed_response = process_text_with_typos(content)
     # 对西文字符段落的回复长度设置为汉字字符的两倍
     max_length = global_config.response_max_length

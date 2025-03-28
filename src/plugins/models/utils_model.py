@@ -523,10 +523,24 @@ class LLM_request:
             return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
             # 防止小朋友们截图自己的key
 
+    def remove_reference_marks(text: str) -> str:
+        if not text:
+            return text
+        return re.sub(r'\[\d+\]', '', text)
+
+    def get_text_after_double_newlines(text):
+        parts = re.split(r"\n{2,}", text)
+        if len(parts) > 1:
+            return parts[-1]
+        else:
+            return text
+
     async def generate_response(self, prompt: str) -> Tuple[str, str, str]:
         """根据输入的提示生成模型的异步响应"""
 
         content, reasoning_content = await self._execute_request(endpoint="/chat/completions", prompt=prompt)
+        content = self.remove_reference_marks(content)
+        content = self.get_text_after_double_newlines(content)
         return content, reasoning_content, self.model_name
 
     async def generate_response_for_image(self, prompt: str, image_base64: str, image_format: str) -> Tuple[str, str]:
@@ -551,6 +565,8 @@ class LLM_request:
         content, reasoning_content = await self._execute_request(
             endpoint="/chat/completions", payload=data, prompt=prompt
         )
+        content = self.remove_reference_marks(content)
+        content = self.get_text_after_double_newlines(content)
         return content, reasoning_content
 
     async def get_embedding(self, text: str) -> Union[list, None]:
