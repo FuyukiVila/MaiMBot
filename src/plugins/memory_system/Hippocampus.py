@@ -958,7 +958,7 @@ class Hippocampus:
                     if keyword.strip()
                 ]
 
-        # logger.info(f"提取的关键词: {', '.join(keywords)}")
+        logger.info(f"提取的关键词: {', '.join(keywords)}")
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
@@ -1155,7 +1155,7 @@ class Hippocampus:
                     if keyword.strip()
                 ]
 
-        # logger.info(f"提取的关键词: {', '.join(keywords)}")
+        logger.info(f"提取的关键词: {', '.join(keywords)}")
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
