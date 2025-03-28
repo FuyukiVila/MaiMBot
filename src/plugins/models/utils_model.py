@@ -523,11 +523,13 @@ class LLM_request:
             return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
             # 防止小朋友们截图自己的key
 
+    @staticmethod
     def remove_reference_marks(text: str) -> str:
         if not text:
             return text
         return re.sub(r'\[\d+\]', '', text)
 
+    @staticmethod
     def get_text_after_double_newlines(text):
         parts = re.split(r"\n{2,}", text)
         if len(parts) > 1:
