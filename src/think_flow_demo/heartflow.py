@@ -1,4 +1,4 @@
-from .current_mind import SubHeartflow
+from .sub_heartflow import SubHeartflow
 from src.plugins.moods.moods import MoodManager
 from src.plugins.models.utils_model import LLM_request
 from src.plugins.config.config import global_config
@@ -34,6 +34,9 @@ class Heartflow:
 
         self._subheartflows = {}
         self.active_subheartflows_nums = 0
+        
+        self.personality_info = " ".join(global_config.PROMPT_PERSONALITY)
+        
 
     async def heartflow_start_working(self):
         while True:
@@ -44,14 +47,14 @@ class Heartflow:
         logger.info(f"{global_config.BOT_NICKNAME}大脑袋转起来了")
         self.current_state.update_current_state_info()
         
-        personality_info = " ".join(global_config.PROMPT_PERSONALITY)
+        personality_info = self.personality_info
         current_thinking_info = self.current_mind
         mood_info = self.current_state.mood
         related_memory_info = 'memory'
         sub_flows_info = await self.get_all_subheartflows_minds()
-
-        schedule_info = bot_schedule.get_current_num_task(num = 5,time_info = True)
-
+        
+        schedule_info = bot_schedule.get_current_num_task(num = 4,time_info = True)
+        
         prompt = ""
         prompt += f"你刚刚在做的事情是：{schedule_info}\n"
         prompt += f"{personality_info}\n"
@@ -87,7 +90,7 @@ class Heartflow:
         return await self.minds_summary(sub_minds)
 
     async def minds_summary(self,minds_str):
-        personality_info = " ".join(global_config.PROMPT_PERSONALITY)
+        personality_info = self.personality_info
         mood_info = self.current_state.mood
 
         prompt = ""
