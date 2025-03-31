@@ -143,6 +143,7 @@ class BotConfig:
     PERSONALITY_1: float = 0.6  # 第一种人格概率
     PERSONALITY_2: float = 0.3  # 第二种人格概率
     PERSONALITY_3: float = 0.1  # 第三种人格概率
+    COMMON_PERSONALITY: str = ""  # 通用人格后缀
 
     # schedule
     ENABLE_SCHEDULE_GEN: bool = False  # 是否启用日程生成
@@ -329,6 +330,7 @@ class BotConfig:
         def personality(parent: dict):
             personality_config = parent["personality"]
             personality = personality_config.get("prompt_personality")
+            config.COMMON_PERSONALITY = personality_config.get("common_personality", config.COMMON_PERSONALITY)
             if len(personality) >= 2:
                 logger.debug(f"载入自定义人格:{personality}")
                 config.PROMPT_PERSONALITY = personality_config.get("prompt_personality", config.PROMPT_PERSONALITY)
