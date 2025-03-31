@@ -98,6 +98,9 @@ class ChatBot:
         messageinfo = message.message_info
 
         # 消息过滤，涉及到config有待更新
+        
+        if groupinfo and groupinfo.group_id not in global_config.talk_allowed_groups:
+            return
 
         # 创建聊天流
         chat = await chat_manager.get_or_create_stream(

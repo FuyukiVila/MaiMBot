@@ -535,8 +535,15 @@ class LLM_request:
 
     async def generate_response(self, prompt: str) -> Tuple[str, str, str]:
         """根据输入的提示生成模型的异步响应"""
+        
+        data = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": global_config.max_response_length,
+            **self.params
+        }
 
-        content, reasoning_content = await self._execute_request(endpoint="/chat/completions", prompt=prompt)
+        content, reasoning_content = await self._execute_request(endpoint="/chat/completions", payload=data, prompt=prompt)
         return content, reasoning_content, self.model_name
 
     async def generate_response_for_image(self, prompt: str, image_base64: str, image_format: str) -> Tuple[str, str]:
