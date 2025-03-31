@@ -535,15 +535,8 @@ class LLM_request:
 
     async def generate_response(self, prompt: str) -> Tuple[str, str, str]:
         """根据输入的提示生成模型的异步响应"""
-        
-        data = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": global_config.max_response_length,
-            **self.params
-        }
 
-        content, reasoning_content = await self._execute_request(endpoint="/chat/completions", payload=data, prompt=prompt)
+        content, reasoning_content = await self._execute_request(endpoint="/chat/completions", prompt=prompt)
         return content, reasoning_content, self.model_name
 
     async def generate_response_for_image(self, prompt: str, image_base64: str, image_format: str) -> Tuple[str, str]:
@@ -617,11 +610,11 @@ class LLM_request:
         return embedding
 
 
-def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 1024 * 1024) -> str:
+def compress_base64_image_by_scale(base64_data: str, target_size: int = 2 * 1024 * 1024) -> str:
     """压缩base64格式的图片到指定大小
     Args:
         base64_data: base64编码的图片数据
-        target_size: 目标文件大小（字节），默认0.8MB
+        target_size: 目标文件大小（字节），默认2MB
     Returns:
         str: 压缩后的base64图片数据
     """
