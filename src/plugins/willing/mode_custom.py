@@ -1,7 +1,7 @@
 import asyncio
 import random
 import time
-from typing import Dict, List
+from typing import Dict
 from src.common.logger import get_module_logger
 from ..config.config import global_config
 from ..chat.chat_stream import ChatStream
@@ -13,19 +13,14 @@ logger = get_module_logger("mode_dynamic")
 class WillingManager:
     def __init__(self):
         self.chat_reply_willing: Dict[str, float] = {}  # 存储每个聊天流的回复意愿
-        self.chat_high_willing_mode: Dict[str, bool] = (
-            {}
-        )  # 存储每个聊天流是否处于高回复意愿期
+        self.chat_high_willing_mode: Dict[str, bool] = {}  # 存储每个聊天流是否处于高回复意愿期
         self.chat_msg_count: Dict[str, int] = {}  # 存储每个聊天流接收到的消息数量
-        self.chat_last_mode_change: Dict[str, float] = (
-            {}
-        )  # 存储每个聊天流上次模式切换的时间
+        self.chat_last_mode_change: Dict[str, float] = {}  # 存储每个聊天流上次模式切换的时间
         self.chat_high_willing_duration: Dict[str, int] = {}  # 高意愿期持续时间(秒)
         self.chat_low_willing_duration: Dict[str, int] = {}  # 低意愿期持续时间(秒)
         self.chat_last_reply_time: Dict[str, float] = {}  # 存储每个聊天流上次回复的时间
         self.chat_last_sender_id: Dict[str, str] = {}  # 存储每个聊天流上次回复的用户ID
         self.chat_conversation_context: Dict[str, bool] = {}  # 标记是否处于对话上下文中
-        self.chat_msg_timestamps: Dict[str, List[float]] = {}  # 新增：记录消息时间戳
         self._decay_task = None
         self._mode_switch_task = None
         self._started = False
@@ -38,14 +33,10 @@ class WillingManager:
                 is_high_mode = self.chat_high_willing_mode.get(chat_id, False)
                 if is_high_mode:
                     # 高回复意愿期内轻微衰减
-                    self.chat_reply_willing[chat_id] = max(
-                        0.5, self.chat_reply_willing[chat_id] * 0.95
-                    )
+                    self.chat_reply_willing[chat_id] = max(0.5, self.chat_reply_willing[chat_id] * 0.95)
                 else:
                     # 低回复意愿期内正常衰减
-                    self.chat_reply_willing[chat_id] = max(
-                        0, self.chat_reply_willing[chat_id] * 0.8
-                    )
+                    self.chat_reply_willing[chat_id] = max(0, self.chat_reply_willing[chat_id] * 0.8)
 
     async def _mode_switch_check(self):
         """定期检查是否需要切换回复意愿模式"""
@@ -60,13 +51,9 @@ class WillingManager:
                 # 获取当前模式的持续时间
                 duration = 0
                 if is_high_mode:
-                    duration = self.chat_high_willing_duration.get(
-                        chat_id, random.randint(600, 900)
-                    )  # 默认3分钟
+                    duration = self.chat_high_willing_duration.get(chat_id, 180)  # 默认3分钟
                 else:
-                    duration = self.chat_low_willing_duration.get(
-                        chat_id, random.randint(240, 480)
-                    )  # 默认5-20分钟
+                    duration = self.chat_low_willing_duration.get(chat_id, random.randint(300, 1200))  # 默认5-20分钟
 
                 # 检查是否需要切换模式
                 if current_time - last_change_time > duration:
@@ -77,7 +64,7 @@ class WillingManager:
 
                 # 检查对话上下文状态是否需要重置
                 last_reply_time = self.chat_last_reply_time.get(chat_id, 0)
-                if current_time - last_reply_time > 600:  # 5分钟无交互，重置对话上下文
+                if current_time - last_reply_time > 300:  # 5分钟无交互，重置对话上下文
                     self.chat_conversation_context[chat_id] = False
 
     def _switch_willing_mode(self, chat_id: str):
@@ -88,22 +75,14 @@ class WillingManager:
             # 从高回复期切换到低回复期
             self.chat_high_willing_mode[chat_id] = False
             self.chat_reply_willing[chat_id] = 0.1  # 设置为最低回复意愿
-            self.chat_low_willing_duration[chat_id] = random.randint(
-                240, 480
-            )  # 4-8分钟
-            logger.debug(
-                f"聊天流 {chat_id} 切换到低回复意愿期，持续 {self.chat_low_willing_duration[chat_id]} 秒"
-            )
+            self.chat_low_willing_duration[chat_id] = random.randint(600, 1200)  # 10-20分钟
+            logger.debug(f"聊天流 {chat_id} 切换到低回复意愿期，持续 {self.chat_low_willing_duration[chat_id]} 秒")
         else:
             # 从低回复期切换到高回复期
             self.chat_high_willing_mode[chat_id] = True
             self.chat_reply_willing[chat_id] = 1.0  # 设置为较高回复意愿
-            self.chat_high_willing_duration[chat_id] = random.randint(
-                600, 900
-            )  # 10-15分钟
-            logger.debug(
-                f"聊天流 {chat_id} 切换到高回复意愿期，持续 {self.chat_high_willing_duration[chat_id]} 秒"
-            )
+            self.chat_high_willing_duration[chat_id] = random.randint(180, 240)  # 3-4分钟
+            logger.debug(f"聊天流 {chat_id} 切换到高回复意愿期，持续 {self.chat_high_willing_duration[chat_id]} 秒")
 
         self.chat_last_mode_change[chat_id] = time.time()
         self.chat_msg_count[chat_id] = 0  # 重置消息计数
@@ -124,15 +103,10 @@ class WillingManager:
         if chat_id not in self.chat_reply_willing:
             self.chat_reply_willing[chat_id] = 0.1
 
-        if chat_id not in self.chat_msg_timestamps:
-            self.chat_msg_timestamps[chat_id] = []  # 时间戳
-
         if chat_id not in self.chat_high_willing_mode:
             self.chat_high_willing_mode[chat_id] = False
             self.chat_last_mode_change[chat_id] = time.time()
-            self.chat_low_willing_duration[chat_id] = random.randint(
-                300, 1200
-            )  # 5-20分钟
+            self.chat_low_willing_duration[chat_id] = random.randint(300, 1200)  # 5-20分钟
 
         if chat_id not in self.chat_msg_count:
             self.chat_msg_count[chat_id] = 0
@@ -170,41 +144,22 @@ class WillingManager:
         last_reply_time = self.chat_last_reply_time.get(chat_id, 0)
         last_sender = self.chat_last_sender_id.get(chat_id, "")
 
-        self.chat_msg_timestamps[chat_id].append(current_time)
-
-        # 清理消息流
-        time_window = 300  # 默认5分钟，可配置
-        self.chat_msg_timestamps[chat_id] = [
-            t
-            for t in self.chat_msg_timestamps[chat_id]
-            if current_time - t <= time_window
-        ]
-
         # 如果是同一个人在短时间内（2分钟内）发送消息，且消息数量较少（<=5条），视为追问
-        if (
-            sender_id
-            and sender_id == last_sender
-            and current_time - last_reply_time < 120
-            and msg_count <= 4
-        ):
+        if sender_id and sender_id == last_sender and current_time - last_reply_time < 120 and msg_count <= 5:
             in_conversation_context = True
             self.chat_conversation_context[chat_id] = True
             logger.debug("检测到追问 (同一用户), 提高回复意愿")
-            current_willing += 0.5 + 0.1 * msg_count
+            current_willing += 0.3
 
-        if (
-            sender_id
-            and sender_id == last_sender
-            and current_time - last_reply_time < 240
-            and msg_count >= 8
-        ):
+        # 特殊情况处理
+        if is_mentioned_bot:
+            current_willing += 1.0
             in_conversation_context = True
             self.chat_conversation_context[chat_id] = True
-            logger.debug("检测到消息过多 (同一用户), 降低回复意愿")
-            current_willing -= 0.2 + 0.01 * msg_count
+            logger.debug(f"被提及, 当前意愿: {current_willing}")
 
         if is_emoji:
-            current_willing *= 0.3
+            current_willing *= 0.1
             logger.debug(f"表情包, 当前意愿: {current_willing}")
 
         # 根据话题兴趣度适当调整
@@ -216,11 +171,11 @@ class WillingManager:
 
         if in_conversation_context:
             # 在对话上下文中，降低基础回复概率
-            base_probability = 0.4 if is_high_mode else 0.2
+            base_probability = 0.5 if is_high_mode else 0.25
             logger.debug(f"处于对话上下文中，基础回复概率: {base_probability}")
         elif is_high_mode:
             # 高回复周期：4-8句话有50%的概率会回复一次
-            base_probability = 0.40 if 4 <= msg_count <= 8 else 0.2
+            base_probability = 0.50 if 4 <= msg_count <= 8 else 0.2
         else:
             # 低回复周期：需要最少15句才有30%的概率会回一句
             base_probability = 0.30 if msg_count >= 15 else 0.03 * min(msg_count, 10)
@@ -231,30 +186,12 @@ class WillingManager:
         # 检查群组权限（如果是群聊）
         if chat_stream.group_info and config:
             if chat_stream.group_info.group_id in config.talk_frequency_down_groups:
-                reply_probability = (
-                    reply_probability / global_config.down_frequency_rate
-                )
-            elif chat_stream.group_info.group_id in config.talk_frequency_up_groups:
-                reply_probability = reply_probability * global_config.up_frequency_rate
+                reply_probability = reply_probability / global_config.down_frequency_rate
 
         # 限制最大回复概率
-        reply_probability = min(reply_probability, 0.6)  # 设置最大回复概率为60%
+        reply_probability = min(reply_probability, 0.75)  # 设置最大回复概率为75%
         if reply_probability < 0:
             reply_probability = 0
-
-        # 消息流超限，额外限制最大回复概率
-        recent_msg_count = len(self.chat_msg_timestamps[chat_id])
-        max_messages = 20  # 默认20，可配置
-        if recent_msg_count > max_messages:
-            reply_probability = min(reply_probability, 0.6 - 0.01 * recent_msg_count)
-            logger.debug(f"消息流 {chat_id} 超限，回复概率额外降低")
-
-        # 特殊情况处理
-        if is_mentioned_bot:
-            reply_probability = 1
-            in_conversation_context = True
-            self.chat_conversation_context[chat_id] = True
-            logger.debug(f"被提及, 当前意愿: {reply_probability}")
 
         relationship = relationship_manager.get_relationship(chat_stream)
         if relationship and hasattr(relationship, "relationship_value"):
@@ -312,9 +249,7 @@ class WillingManager:
             else:
                 willing_increase = random.uniform(0.05, 0.1)
 
-            self.chat_reply_willing[chat_id] = min(
-                2.0, current_willing + willing_increase
-            )
+            self.chat_reply_willing[chat_id] = min(2.0, current_willing + willing_increase)
 
     def change_reply_willing_after_sent(self, chat_stream: ChatStream):
         """发送消息后提高聊天流的回复意愿"""

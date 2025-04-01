@@ -100,11 +100,11 @@ class ChatBot:
         # 消息过滤，涉及到config有待更新
         
         if groupinfo and groupinfo.group_id not in global_config.talk_allowed_groups:
-            logger.info(f"消息来自不允许的群组：{groupinfo.group_name}，filtered")
+            logger.debug(f"消息来自不允许的群组：{groupinfo.group_name}，filtered")
             return
         
-        if userinfo.user_id in global_config.ban_user_id:
-            logger.info(f"消息来自被封禁的用户：{userinfo.user_nickname}，filtered")
+        if not userinfo or userinfo.user_id in global_config.ban_user_id:
+            logger.debug(f"消息来自被封禁的用户：{userinfo.user_nickname}，filtered")
             return
 
         # 创建聊天流
