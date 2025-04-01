@@ -39,64 +39,30 @@ class ChatBot:
 
     async def message_process(self, message_data: str) -> None:
         """处理转化后的统一格式消息
-        1. 过滤消息
-        2. 记忆激活
-        3. 意愿激活
-        4. 生成回复并发送
-        5. 更新关系
-        6. 更新情绪
+        根据global_config.response_mode选择不同的回复模式：
+        1. heart_flow模式：使用思维流系统进行回复
+           - 包含思维流状态管理
+           - 在回复前进行观察和状态更新
+           - 回复后更新思维流状态
+        
+        2. reasoning模式：使用推理系统进行回复
+           - 直接使用意愿管理器计算回复概率
+           - 没有思维流相关的状态管理
+           - 更简单直接的回复逻辑
+        
+        两种模式都包含：
+        - 消息过滤
+        - 记忆激活
+        - 意愿计算
+        - 消息生成和发送
+        - 表情包处理
+        - 性能计时
         """
-        
-        timing_results = {}  # 用于收集所有计时结果
-        response_set = None  # 初始化response_set变量
 
-        message = MessageRecv(message_data)
-        groupinfo = message.message_info.group_info
-        userinfo = message.message_info.user_info
-        messageinfo = message.message_info
-
-        if groupinfo.group_id not in global_config.talk_allowed_groups:
-            return
-        
-        
-        # 消息过滤，涉及到config有待更新
-
-        # 创建聊天流
-        chat = await chat_manager.get_or_create_stream(
-            platform=messageinfo.platform,
-            user_info=userinfo,
-            group_info=groupinfo,
-        )
-        message.update_chat_stream(chat)
-
-        # 创建 心流与chat的观察
-        heartflow.create_subheartflow(chat.stream_id)
-
-        await message.process()
-
-        # 过滤词/正则表达式过滤
-        if self._check_ban_words(message.processed_plain_text, chat, userinfo) or self._check_ban_regex(
-            message.raw_message, chat, userinfo
-        ):
-            return
-
-        await self.storage.store_message(message, chat)
-
-        timer1 = time.time()
-        interested_rate = 0
-        interested_rate = await HippocampusManager.get_instance().get_activate_from_text(
-            message.processed_plain_text, fast_retrieval=True
-        )
-        timer2 = time.time()
-        timing_results["记忆激活"] = timer2 - timer1
-
-        is_mentioned = is_mentioned_bot_in_message(message)
-
-        if global_config.enable_think_flow:
-            current_willing_old = willing_manager.get_willing(chat_stream=chat)
-            current_willing_new = (heartflow.get_subheartflow(chat.stream_id).current_state.willing - 5) / 4
-            print(f"旧回复意愿：{current_willing_old}，新回复意愿：{current_willing_new}")
-            current_willing = (current_willing_old + current_willing_new) / 2
+        if global_config.response_mode == "heart_flow":
+            await self.think_flow_chat.process_message(message_data)
+        elif global_config.response_mode == "reasoning":
+            await self.reasoning_chat.process_message(message_data)
         else:
             logger.error(f"未知的回复模式，请检查配置文件！！: {global_config.response_mode}")
 
