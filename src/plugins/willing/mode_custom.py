@@ -5,7 +5,6 @@ from typing import Dict
 from src.common.logger import get_module_logger
 from ..config.config import global_config
 from ..chat.chat_stream import ChatStream
-from ..chat.relationship_manager import relationship_manager
 
 logger = get_module_logger("mode_dynamic")
 
@@ -192,16 +191,6 @@ class WillingManager:
         reply_probability = min(reply_probability, 0.75)  # 设置最大回复概率为75%
         if reply_probability < 0:
             reply_probability = 0
-
-        relationship = relationship_manager.get_relationship(chat_stream)
-        if relationship and hasattr(relationship, "relationship_value"):
-            rel_value = relationship.relationship_value
-            # 线性映射
-            rel_boost = 1 + rel_value / 3000
-            reply_probability *= rel_boost
-            logger.debug(f"关系值加成: {rel_boost:.2f}, 当前概率: {reply_probability}")
-        else:
-            logger.debug("未找到用户关系值，使用默认加成")
 
         # 记录当前发送者ID以便后续追踪
         if sender_id:
