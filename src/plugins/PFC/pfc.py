@@ -49,10 +49,10 @@ class ActionPlanner:
         self.llm = LLM_request(
             model=global_config.llm_normal,
             temperature=0.7,
-            max_tokens=global_config.max_response_length,
+            max_tokens=1000,
             request_type="action_planning"
         )
-        self.personality_info = ActionPlanner.choose_personality()
+        self.personality_info = " ".join(global_config.PROMPT_PERSONALITY)
         self.name = global_config.BOT_NICKNAME
         self.chat_observer = ChatObserver.get_instance(stream_id)
         
@@ -179,24 +179,6 @@ judge_conversation: 判断对话是否结束，当发现对话目标已经达到
         except Exception as e:
             logger.error(f"规划行动时出错: {str(e)}")
             return "direct_reply", "发生错误，选择直接回复"
-    
-    @staticmethod
-    def choose_personality() -> str:
-        """随机选择一个人格"""
-        personality = global_config.PROMPT_PERSONALITY
-        probability_1 = global_config.PERSONALITY_1
-        probability_2 = global_config.PERSONALITY_2
-        
-        personality_choice = random.random()
-        if personality_choice < probability_1:  # 第一种风格
-            prompt_personality = personality[0]
-        elif personality_choice < probability_1 + probability_2:  # 第二种风格
-            prompt_personality = personality[1]
-        else:  # 第三种人格
-            prompt_personality = personality[2]
-        prompt_personality += global_config.COMMON_PERSONALITY
-        
-        return prompt_personality
 
 
 class GoalAnalyzer:
@@ -557,6 +539,24 @@ class Conversation:
     _instances: Dict[str, 'Conversation'] = {}
     
     @classmethod
+    def choose_personality() -> str:
+        """随机选择一个人格"""
+        personality = global_config.PROMPT_PERSONALITY
+        probability_1 = global_config.PERSONALITY_1
+        probability_2 = global_config.PERSONALITY_2
+        
+        personality_choice = random.random()
+        if personality_choice < probability_1:  # 第一种风格
+            prompt_personality = personality[0]
+        elif personality_choice < probability_1 + probability_2:  # 第二种风格
+            prompt_personality = personality[1]
+        else:  # 第三种人格
+            prompt_personality = personality[2]
+        prompt_personality += global_config.COMMON_PERSONALITY
+        
+        return prompt_personality
+    
+    @classmethod
     def get_instance(cls, stream_id: str) -> 'Conversation':
         """获取或创建对话实例"""
         if stream_id not in cls._instances:
@@ -601,6 +601,12 @@ class Conversation:
         self.knowledge_fetcher = KnowledgeFetcher()
         self.direct_sender = DirectMessageSender()
         self.waiter = Waiter(self.stream_id)
+        
+        self.personality = Conversation.choose_personality()  # 随机选择人格
+        self.goal_analyzer.personality_info = self.personality
+        self.action_planner.personality_info = self.personality
+        self.reply_generator.personality_info = self.personality
+        self.waiter.personality_info = self.personality
         
         # 创建聊天流
         self.chat_stream = chat_manager.get_stream(self.stream_id)
