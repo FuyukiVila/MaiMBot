@@ -185,7 +185,7 @@ judge_conversation: 判断对话是否结束，当发现对话目标已经达到
             return "direct_reply", "发生错误，选择直接回复"
     
     @staticmethod
-    def choose_personality(self) -> str:
+    def choose_personality() -> str:
         """随机选择一个人格"""
         personality = global_config.PROMPT_PERSONALITY
         probability_1 = global_config.PERSONALITY_1
