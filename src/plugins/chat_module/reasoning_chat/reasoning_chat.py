@@ -133,13 +133,6 @@ class ReasoningChat:
         userinfo = message.message_info.user_info
         messageinfo = message.message_info
 
-        
-        if groupinfo == None and global_config.enable_friend_chat:#如果是私聊
-            pass
-        elif groupinfo.group_id not in global_config.talk_allowed_groups:
-                return
-        elif not userinfo or userinfo.user_id in global_config.ban_user_id:
-                return
 
         # logger.info("使用推理聊天模式")
 
