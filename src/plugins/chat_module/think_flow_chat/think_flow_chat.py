@@ -149,6 +149,8 @@ class ThinkFlowChat:
             pass
         elif groupinfo.group_id not in global_config.talk_allowed_groups:
                 return
+        elif not userinfo or userinfo.user_id in global_config.ban_user_id:
+                return
 
         # 创建聊天流
         chat = await chat_manager.get_or_create_stream(

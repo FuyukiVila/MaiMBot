@@ -123,6 +123,10 @@ class WillingManager:
         interested_rate: float = 0,
         sender_id: str = None,
     ) -> float:
+        """私聊窗口特殊处理"""
+        if not chat_stream.group_info:
+            return 0.75
+        
         """改变指定聊天流的回复意愿并返回回复概率"""
         # 获取或创建聊天流
         stream = chat_stream
