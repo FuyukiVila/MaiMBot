@@ -538,7 +538,7 @@ class Conversation:
     # 类级别的实例管理
     _instances: Dict[str, 'Conversation'] = {}
     
-    @classmethod
+    @staticmethod
     def choose_personality() -> str:
         """随机选择一个人格"""
         personality = global_config.PROMPT_PERSONALITY
