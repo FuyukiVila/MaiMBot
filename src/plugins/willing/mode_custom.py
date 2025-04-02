@@ -156,13 +156,13 @@ class WillingManager:
 
         # 特殊情况处理
         if is_mentioned_bot:
-            current_willing += 1.0
+            current_willing += 2.0
             in_conversation_context = True
             self.chat_conversation_context[chat_id] = True
             logger.debug(f"被提及, 当前意愿: {current_willing}")
 
         if is_emoji:
-            current_willing *= 0.1
+            current_willing *= global_config.emoji_response_penalty
             logger.debug(f"表情包, 当前意愿: {current_willing}")
 
         # 根据话题兴趣度适当调整
