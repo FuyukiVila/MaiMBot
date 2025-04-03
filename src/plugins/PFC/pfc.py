@@ -19,7 +19,6 @@ from .pfc_KnowledgeFetcher import KnowledgeFetcher
 from .reply_checker import ReplyChecker
 import json
 import time
-import random
 
 logger = get_module_logger("pfc")
 
@@ -538,24 +537,6 @@ class Conversation:
     # 类级别的实例管理
     _instances: Dict[str, 'Conversation'] = {}
     
-    @staticmethod
-    def choose_personality() -> str:
-        """随机选择一个人格"""
-        personality = global_config.PROMPT_PERSONALITY
-        probability_1 = global_config.PERSONALITY_1
-        probability_2 = global_config.PERSONALITY_2
-        
-        personality_choice = random.random()
-        if personality_choice < probability_1:  # 第一种风格
-            prompt_personality = personality[0]
-        elif personality_choice < probability_1 + probability_2:  # 第二种风格
-            prompt_personality = personality[1]
-        else:  # 第三种人格
-            prompt_personality = personality[2]
-        prompt_personality += global_config.COMMON_PERSONALITY
-        
-        return prompt_personality
-    
     @classmethod
     def get_instance(cls, stream_id: str) -> 'Conversation':
         """获取或创建对话实例"""
@@ -601,12 +582,6 @@ class Conversation:
         self.knowledge_fetcher = KnowledgeFetcher()
         self.direct_sender = DirectMessageSender()
         self.waiter = Waiter(self.stream_id)
-        
-        self.personality = Conversation.choose_personality()  # 随机选择人格
-        self.goal_analyzer.personality_info = self.personality
-        self.action_planner.personality_info = self.personality
-        self.reply_generator.personality_info = self.personality
-        self.waiter.personality_info = self.personality
         
         # 创建聊天流
         self.chat_stream = chat_manager.get_stream(self.stream_id)
