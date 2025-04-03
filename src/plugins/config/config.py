@@ -180,6 +180,7 @@ class BotConfig:
     response_mode: str = "heart_flow"  # 回复策略
     MODEL_R1_PROBABILITY: float = 0.8  # R1模型概率
     MODEL_V3_PROBABILITY: float = 0.1  # V3模型概率
+    RESPONSE_TEMPERATURE: float = 1.0  # 回复温度
     # MODEL_R1_DISTILL_PROBABILITY: float = 0.1  # R1蒸馏模型概率
 
     # emoji
@@ -376,6 +377,7 @@ class BotConfig:
             response_config = parent["response"]
             config.MODEL_R1_PROBABILITY = response_config.get("model_r1_probability", config.MODEL_R1_PROBABILITY)
             config.MODEL_V3_PROBABILITY = response_config.get("model_v3_probability", config.MODEL_V3_PROBABILITY)
+            config.RESPONSE_TEMPERATURE = response_config.get("response_temperature", config.RESPONSE_TEMPERATURE)
             # config.MODEL_R1_DISTILL_PROBABILITY = response_config.get(
             #     "model_r1_distill_probability", config.MODEL_R1_DISTILL_PROBABILITY
             # )
