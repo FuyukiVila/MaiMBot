@@ -78,6 +78,11 @@ class ChatBot:
         
         message = MessageRecv(message_data)
         groupinfo = message.message_info.group_info
+        userinfo = message.message_info.user_info
+        
+        if not userinfo or userinfo.user_id in global_config.ban_user_id:
+            logger.info(f"用户 {userinfo.user_id} 被禁止，消息处理跳过")
+            return
 
         if global_config.enable_pfc_chatting:
             try:
@@ -91,8 +96,8 @@ class ChatBot:
                         group_info=groupinfo,
                     )
                     message.update_chat_stream(chat)
-                    await self.only_process_chat.process_message(message)
-                    await self._create_PFC_chat(message)
+                    if await self.only_process_chat.process_message(message):
+                        await self._create_PFC_chat(message)
                 else:
                     if groupinfo.group_id in global_config.talk_allowed_groups:
                         if global_config.response_mode == "heart_flow":

@@ -51,7 +51,7 @@ class MessageProcessor:
         if self._check_ban_words(message.processed_plain_text, chat, userinfo) or self._check_ban_regex(
             message.raw_message, chat, userinfo
         ):
-            return
+            return False
 
         # 存储消息
         await self.storage.store_message(message, chat)
@@ -64,3 +64,4 @@ class MessageProcessor:
             f"[{current_time}][{mes_name}]"
             f"{chat.user_info.user_nickname}: {message.processed_plain_text}"
         )
+        return True
