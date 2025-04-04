@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+from dateutil import tz
 
 import tomli
 import tomlkit
@@ -25,7 +26,7 @@ logger = get_module_logger("config", config=config_config)
 
 #考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
 mai_version_main = "test-0.6.0"
-mai_version_fix = "snapshot-8"
+mai_version_fix = "snapshot-9"
 mai_version = f"{mai_version_main}-{mai_version_fix}"
 
 def update_config():
@@ -152,6 +153,7 @@ class BotConfig:
     PROMPT_SCHEDULE_GEN = "无日程"
     SCHEDULE_DOING_UPDATE_INTERVAL: int = 300  # 日程表更新间隔 单位秒
     SCHEDULE_TEMPERATURE: float = 0.5  # 日程表温度，建议0.5-1.0
+    TIME_ZONE: str = "Asia/Shanghai"  # 时区
 
     # message
     MAX_CONTEXT_SIZE: int = 15  # 上下文最大消息数
@@ -358,6 +360,11 @@ class BotConfig:
             )
             if config.INNER_VERSION in SpecifierSet(">=1.0.2"):
                 config.SCHEDULE_TEMPERATURE = schedule_config.get("schedule_temperature", config.SCHEDULE_TEMPERATURE)
+                time_zone = schedule_config.get("time_zone", config.TIME_ZONE)
+                if tz.gettz(time_zone) is None:
+                    logger.error(f"无效的时区: {time_zone}，使用默认值: {config.TIME_ZONE}")
+                else:
+                    config.TIME_ZONE = time_zone
 
         def emoji(parent: dict):
             emoji_config = parent["emoji"]
