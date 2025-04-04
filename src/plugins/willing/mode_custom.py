@@ -125,6 +125,10 @@ class WillingManager:
     ) -> float:
         """私聊窗口特殊处理"""
         if not chat_stream.group_info:
+            if is_mentioned_bot:
+                return 1.0
+            if is_emoji:
+                return 0.1
             return 0.75
         
         """改变指定聊天流的回复意愿并返回回复概率"""
