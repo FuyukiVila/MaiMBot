@@ -233,3 +233,4 @@ logs
 **/lib/quick_algo/cython_debug/
 **/lib/quick_algo/pagerank.c
 **/lib/quick_algo/pagerank.cp312-win_amd64.pyd
+src/plugins/knowledge/src/scripts/raw.txt
