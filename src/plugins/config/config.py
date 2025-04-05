@@ -25,12 +25,19 @@ config_config = LogConfig(
 logger = get_module_logger("config", config=config_config)
 
 #考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
+is_test = True
 mai_version_main = "0.6.1"
-mai_version_fix = "snapshot-1"
+mai_version_fix = "snapshot-2"
 if mai_version_fix:
-    mai_version = f"{mai_version_main}-{mai_version_fix}"
+    if is_test:
+        mai_version = f"test-{mai_version_main}-{mai_version_fix}"
+    else:
+        mai_version = f"{mai_version_main}-{mai_version_fix}"
 else:
-    mai_version = mai_version_main
+    if is_test:
+        mai_version = f"test-{mai_version_main}"
+    else:
+        mai_version = mai_version_main
 
 def update_config():
     # 获取根目录路径
@@ -163,6 +170,7 @@ class BotConfig:
     emoji_chance: float = 0.2  # 发送表情包的基础概率
     thinking_timeout: int = 120  # 思考时间
     max_response_length: int = 1024  # 最大回复长度
+    message_buffer: bool = True  # 消息缓冲器
 
     ban_words = set()
     ban_msgs_regex = set()
@@ -509,6 +517,8 @@ class BotConfig:
 
             if config.INNER_VERSION in SpecifierSet(">=0.0.11"):
                 config.max_response_length = msg_config.get("max_response_length", config.max_response_length)
+            if config.INNER_VERSION in SpecifierSet(">=1.1.4"):
+                config.message_buffer = msg_config.get("message_buffer", config.message_buffer)
 
         def memory(parent: dict):
             memory_config = parent["memory"]
