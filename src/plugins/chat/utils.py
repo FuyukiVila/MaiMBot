@@ -349,6 +349,9 @@ def calculate_typing_time(input_string: str, chinese_time: float = 0.2, english_
     - 在所有输入结束后，额外加上回车时间0.3秒
     - 如果is_emoji为True，将使用固定1秒的输入时间
     """
+    
+    # 暂时不需要打字时间
+    return 0.0 
 
     # 如果输入是列表，将其连接成字符串
     if isinstance(input_string, list):
