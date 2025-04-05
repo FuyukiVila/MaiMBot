@@ -123,6 +123,7 @@ class SubHeartflow:
         schedule_info = bot_schedule.get_current_num_task(num=1, time_info=False)
 
         prompt = ""
+        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         prompt += f"你刚刚在做的事情是：{schedule_info}\n"
         # prompt += f"麦麦的总体想法是：{self.main_heartflow_info}\n\n"
         prompt += f"你{self.personality_info}\n"
@@ -171,6 +172,7 @@ class SubHeartflow:
         schedule_info = bot_schedule.get_current_num_task(num=1, time_info=False)
 
         prompt = ""
+        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         # prompt += f"麦麦的总体想法是：{self.main_heartflow_info}\n\n"
         prompt += f"你{self.personality_info}\n"
         prompt += f"你刚刚在做的事情是：{schedule_info}\n"
@@ -204,6 +206,7 @@ class SubHeartflow:
         # schedule_info = bot_schedule.get_current_num_task(num=1, time_info=False)
 
         prompt = ""
+        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         # prompt += f"你现在正在做的事情是：{schedule_info}\n"
         prompt += f"你{self.personality_info}\n"
         prompt += f"现在你正在上网，和qq群里的网友们聊天，群里正在聊的话题是：{chat_observe_info}\n"
@@ -229,6 +232,7 @@ class SubHeartflow:
         mood_info = self.current_state.mood
         # print("麦麦闹情绪了2")
         prompt = ""
+        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         prompt += f"{self.personality_info}\n"
         prompt += "现在你正在上网，和qq群里的网友们聊天"
         prompt += f"你现在的想法是{current_thinking_info}。"

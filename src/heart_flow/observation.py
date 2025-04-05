@@ -116,6 +116,7 @@ class ChattingObservation(Observation):
         # 基于已经有的talking_summary，和新的talking_message，生成一个summary
         # print(f"更新聊天总结：{self.talking_summary}")
         prompt = ""
+        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         prompt += f"你{self.personality_info}，请注意识别你自己的聊天发言"
         prompt += f"你的名字叫：{self.name}，你的昵称是：{self.nick_name}\n"
         prompt += f"你正在参与一个qq群聊的讨论，你记得这个群之前在聊的内容是：{self.observe_info}\n"
