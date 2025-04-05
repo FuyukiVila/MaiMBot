@@ -43,6 +43,12 @@ class Message_Sender:
         # 按thinking_start_time排序，时间早的在前面
         return recalled_messages
 
+    async def send_via_ws(self, message: MessageSending) -> None:
+        try:
+            await global_api.send_message(message)
+        except Exception as e:
+            raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
+
     async def send_message(
         self,
         message: MessageSending,
@@ -58,7 +64,7 @@ class Message_Sender:
                     logger.warning(f"消息“{message.processed_plain_text}”已被撤回，不发送")
                     break
             if not is_recalled:
-                typing_time = calculate_typing_time(message.processed_plain_text)
+                typing_time = calculate_typing_time(message.processed_plain_text,message.is_emoji)
                 await asyncio.sleep(typing_time)
 
                 message_json = message.to_dict()
@@ -69,14 +75,14 @@ class Message_Sender:
                     if end_point:
                         # logger.info(f"发送消息到{end_point}")
                         # logger.info(message_json)
-                        await global_api.send_message_REST(end_point, message_json)
-                    else:
                         try:
-                            await global_api.send_message(message)
+                            await global_api.send_message_REST(end_point, message_json)
                         except Exception as e:
-                            raise ValueError(
-                                f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件"
-                            ) from e
+                            logger.error(f"REST方式发送失败，出现错误: {str(e)}")
+                            logger.info("尝试使用ws发送")
+                            await self.send_via_ws(message)
+                    else:
+                        await self.send_via_ws(message)
                     logger.success(f"发送消息“{message_preview}”成功")
                 except Exception as e:
                     logger.error(f"发送消息“{message_preview}”失败: {str(e)}")
