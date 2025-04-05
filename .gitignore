@@ -1,6 +1,7 @@
 data/
 data1/
 mongodb/
+db/
 NapCat.Framework.Windows.Once/
 log/
 logs/
