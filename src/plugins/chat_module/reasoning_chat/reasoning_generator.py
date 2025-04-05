@@ -33,7 +33,7 @@ class ResponseGenerator:
         )
 
         self.model_sum = LLM_request(
-            model=global_config.llm_summary_by_topic, temperature=global_config.RESPONSE_TEMPERATURE, max_tokens=3000, request_type="relation"
+            model=global_config.llm_emotion_judge, temperature=global_config.RESPONSE_TEMPERATURE, max_tokens=3000, request_type="relation"
         )
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"
