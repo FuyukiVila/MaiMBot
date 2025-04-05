@@ -3,6 +3,9 @@ import sqlite3
 from typing import Dict, Any, List, Optional, Tuple, Union
 import json
 from threading import Lock
+import logging
+
+logger = logging.getLogger("database_sqlite")
 
 class SqliteCollection:
     def __init__(self, db_path: str, collection_name: str):
@@ -309,6 +312,8 @@ class SqliteDatabase:
         # 初始化连接以创建数据库文件
         conn = sqlite3.connect(db_path)
         conn.close()
+        
+        logger.info(f"已初始化SQLite数据库: {db_path}")
 
     def __getattr__(self, name):
         if name not in self._collections:
@@ -341,7 +346,18 @@ class DBWrapper:
 
     def _get_db(self):
         if self._db is None:
-            db_path = os.path.join(os.getcwd(), 'db', 'maimbot.db')
+            # 从环境变量获取数据库名称
+            db_name = os.getenv("DATABASE_NAME", "MegBot")
+            
+            # 固定使用db目录
+            db_dir = os.path.join(os.getcwd(), "db")
+            
+            # 确保db目录存在
+            os.makedirs(db_dir, exist_ok=True)
+            
+            # 构建数据库路径
+            db_path = os.path.join(db_dir, f"{db_name}.db")
+            
             self._db = SqliteDatabase(db_path)
         return self._db
 
