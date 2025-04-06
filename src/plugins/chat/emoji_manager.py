@@ -34,7 +34,7 @@ class EmojiManager:
 
     def __init__(self):
         self._scan_task = None
-        self.vlm = LLM_request(model=global_config.vlm, temperature=0.3, max_tokens=1000, request_type="emoji")
+        self.vlm = LLM_request(model=global_config.vlm, temperature=1.0, max_tokens=1000, request_type="emoji")
         self.llm_emotion_judge = LLM_request(
             model=global_config.llm_emotion_judge, max_tokens=600, temperature=0.8, request_type="emoji"
         )  # 更高的温度，更少的token（后续可以根据情绪来调整温度）
