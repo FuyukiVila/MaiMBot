@@ -92,7 +92,7 @@ class Identity:
             random.shuffle(identity_detail)
             prompt_identity += identity_detail[0]
         elif level == 2:
-            for detail in identity_detail:
+            for detail in self.identity_detail:
                 prompt_identity += f",{detail}"
         prompt_identity += "。"
         return prompt_identity
