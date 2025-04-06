@@ -208,11 +208,11 @@ def split_into_sentences_w_remove_punctuation(text: str) -> List[str]:
     text_no_1 = ""
     for letter in text:
         # print(f"当前字符: {letter}")
-        if letter in ["!", "！", "?", "？"]:
+        if letter in ["!", "！"]:
             # print(f"当前字符: {letter}, 随机数: {random.random()}")
             if random.random() < split_strength:
                 letter = ""
-        if letter in ["。", "…"]:
+        if letter in ["。"]:
             # print(f"当前字符: {letter}, 随机数: {random.random()}")
             if random.random() < 1 - split_strength:
                 letter = ""
@@ -327,9 +327,11 @@ def process_llm_response(text: str) -> List[str]:
             sentences.append(sentence)
     # 检查分割后的消息数量是否过多（超过3条）
 
-    if len(sentences) > max_sentence_num:
-        logger.warning(f"分割后消息数量过多 ({len(sentences)} 条)，返回默认回复")
-        return [f"{global_config.BOT_NICKNAME}不知道哦"]
+    while len(sentences) > max_sentence_num:
+        # 消息两两合并
+        sentences = ["".join(sentences[i : i + 2]) for i in range(0, len(sentences), 2)]
+        # logger.warning(f"分割后消息数量过多 ({len(sentences)} 条)，返回默认回复")
+        # return [f"{global_config.BOT_NICKNAME}不知道哦"]
 
     return sentences
 
@@ -345,7 +347,9 @@ def calculate_typing_time(input_string: str, chinese_time: float = 0.2, english_
     - 如果只有一个中文字符，将使用3倍的中文输入时间
     - 在所有输入结束后，额外加上回车时间0.3秒
     """
-
+    
+    # 暂时不需要打字时间
+    return 0.0 
     # 如果输入是列表，将其连接成字符串
     if isinstance(input_string, list):
         input_string = ''.join(input_string)

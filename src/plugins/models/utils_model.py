@@ -182,6 +182,7 @@ class LLM_request:
 
         # 构建请求体
         if image_base64:
+            image_base64 = compress_base64_image_by_scale(image_base64)
             payload = await self._build_payload(prompt, image_base64, image_format)
         elif payload is None:
             payload = await self._build_payload(prompt)
@@ -651,11 +652,11 @@ class LLM_request:
         return embedding
 
 
-def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 1024 * 1024) -> str:
+def compress_base64_image_by_scale(base64_data: str, target_size: int = 2 * 1024 * 1024) -> str:
     """压缩base64格式的图片到指定大小
     Args:
         base64_data: base64编码的图片数据
-        target_size: 目标文件大小（字节），默认0.8MB
+        target_size: 目标文件大小（字节），默认2MB
     Returns:
         str: 压缩后的base64图片数据
     """

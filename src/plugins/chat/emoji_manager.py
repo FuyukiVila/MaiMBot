@@ -34,9 +34,9 @@ class EmojiManager:
 
     def __init__(self):
         self._scan_task = None
-        self.vlm = LLM_request(model=global_config.vlm, temperature=0.3, max_tokens=1000, request_type="emoji")
+        self.vlm = LLM_request(model=global_config.vlm, temperature=global_config.VLM_TEMPERATURE, max_tokens=1000, request_type="emoji")
         self.llm_emotion_judge = LLM_request(
-            model=global_config.llm_emotion_judge, max_tokens=600, temperature=0.8, request_type="emoji"
+            model=global_config.llm_emotion_judge, max_tokens=600, temperature=global_config.EMOTION_TEMPERATURE, request_type="emoji"
         )  # 更高的温度，更少的token（后续可以根据情绪来调整温度）
         
         self.emoji_num = 0
@@ -230,7 +230,7 @@ class EmojiManager:
                 f'注意不要输出任何对消息内容的分析内容，只输出"一种什么样的感觉"中间的形容词部分。'
             )
 
-            content, _ = await self.llm_emotion_judge.generate_response_async(prompt, temperature=1.5)
+            content, _ = await self.llm_emotion_judge.generate_response_async(prompt)
             logger.info(f"[情感] 表情包情感描述: {content}")
             return content
 

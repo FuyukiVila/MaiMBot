@@ -172,6 +172,7 @@ class BotConfig:
     sub_heart_flow_freeze_time: int = 120  # 子心流冻结时间，超过这个时间没有回复，子心流会冻结，间隔 单位秒
     sub_heart_flow_stop_time: int = 600  # 子心流停止时间，超过这个时间没有回复，子心流会停止，间隔 单位秒
     heart_flow_update_interval: int = 300  # 心流更新频率，间隔 单位秒
+    HEART_FLOW_TEMPERATURE: float = 1.3  # 心流温度
     
     # willing
     willing_mode: str = "classical"  # 意愿模式
@@ -185,6 +186,8 @@ class BotConfig:
     MODEL_R1_PROBABILITY: float = 0.8  # R1模型概率
     MODEL_V3_PROBABILITY: float = 0.1  # V3模型概率
     # MODEL_R1_DISTILL_PROBABILITY: float = 0.1  # R1蒸馏模型概率
+    RESPONSE_TEMPERATURE: float = 1.3  # 回复温度
+    EMOTION_TEMPERATURE: float = 1.3   # 情感温度
 
     # emoji
     max_emoji_num: int = 200  # 表情包最大数量
@@ -194,6 +197,7 @@ class BotConfig:
     EMOJI_SAVE: bool = True  # 偷表情包
     EMOJI_CHECK: bool = False  # 是否开启过滤
     EMOJI_CHECK_PROMPT: str = "符合公序良俗"  # 表情包过滤要求
+    VLM_TEMPERATURE: float = 1.5 # 图像识别温度
 
     # memory
     build_memory_interval: int = 600  # 记忆构建间隔（秒）
@@ -373,6 +377,7 @@ class BotConfig:
             config.EMOJI_CHECK_PROMPT = emoji_config.get("check_prompt", config.EMOJI_CHECK_PROMPT)
             config.EMOJI_SAVE = emoji_config.get("auto_save", config.EMOJI_SAVE)
             config.EMOJI_CHECK = emoji_config.get("enable_check", config.EMOJI_CHECK)
+            config.VLM_TEMPERATURE = emoji_config.get("vlm_temperature", config.VLM_TEMPERATURE)
             if config.INNER_VERSION in SpecifierSet(">=1.1.1"):
                 config.max_emoji_num = emoji_config.get("max_emoji_num", config.max_emoji_num)
                 config.max_reach_deletion = emoji_config.get("max_reach_deletion", config.max_reach_deletion)
@@ -393,6 +398,8 @@ class BotConfig:
             #     "model_r1_distill_probability", config.MODEL_R1_DISTILL_PROBABILITY
             # )
             config.max_response_length = response_config.get("max_response_length", config.max_response_length)
+            config.RESPONSE_TEMPERATURE = response_config.get("response_temperature", config.RESPONSE_TEMPERATURE)
+            config.EMOTION_TEMPERATURE = response_config.get("emotion_temperature", config.EMOTION_TEMPERATURE)
             if config.INNER_VERSION in SpecifierSet(">=1.0.4"):
                 config.response_mode = response_config.get("response_mode", config.response_mode)
             
@@ -402,6 +409,7 @@ class BotConfig:
             config.sub_heart_flow_freeze_time = heartflow_config.get("sub_heart_flow_freeze_time", config.sub_heart_flow_freeze_time)
             config.sub_heart_flow_stop_time = heartflow_config.get("sub_heart_flow_stop_time", config.sub_heart_flow_stop_time)
             config.heart_flow_update_interval = heartflow_config.get("heart_flow_update_interval", config.heart_flow_update_interval)
+            config.HEART_FLOW_TEMPERATURE = heartflow_config.get("heart_flow_temperature", config.HEART_FLOW_TEMPERATURE)
 
         def willing(parent: dict):
             willing_config = parent["willing"]
