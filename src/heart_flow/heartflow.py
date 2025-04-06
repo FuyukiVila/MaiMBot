@@ -111,7 +111,6 @@ class Heartflow:
         schedule_info = bot_schedule.get_current_num_task(num=4, time_info=True)
 
         prompt = ""
-        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         prompt += f"你刚刚在做的事情是：{schedule_info}\n"
         prompt += f"{personality_info}\n"
         prompt += f"你想起来{related_memory_info}。"
@@ -167,7 +166,6 @@ class Heartflow:
         mood_info = self.current_state.mood
 
         prompt = ""
-        prompt += f"你的网名叫{global_config.BOT_NICKNAME}，有人也叫你{"/".join(global_config.BOT_ALIAS_NAMES)}\n"
         prompt += f"{personality_info}\n"
         prompt += f"现在{global_config.BOT_NICKNAME}的想法是：{self.current_mind}\n"
         prompt += f"现在{global_config.BOT_NICKNAME}在qq群里进行聊天，聊天的话题如下：{minds_str}\n"
