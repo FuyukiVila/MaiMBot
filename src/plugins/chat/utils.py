@@ -47,7 +47,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> bool:
     is_mentioned = False
 
     # 判断是否被@
-    if re.search(f"@[\s\S]*?（id:{global_config.BOT_QQ}）", message.processed_plain_text):
+    if re.search(rf"@[\s\S]*?（id:{global_config.BOT_QQ}）", message.processed_plain_text):
         is_at = True
         is_mentioned = True
 
@@ -58,7 +58,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> bool:
         if not is_mentioned:
 
             # 判断是否被回复
-            if re.match(f"回复[\s\S]*?\({global_config.BOT_QQ}\)的消息，说：", message.processed_plain_text):
+            if re.match(rf"回复[\s\S]*?（{global_config.BOT_QQ}）的消息，说：", message.processed_plain_text):
                 is_mentioned = True
             
             # 判断内容中是否被提及
