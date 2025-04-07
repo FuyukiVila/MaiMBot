@@ -25,9 +25,9 @@ config_config = LogConfig(
 logger = get_module_logger("config", config=config_config)
 
 #考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
-is_test = True
+is_test = False
 mai_version_main = "0.6.1"
-mai_version_fix = "snapshot-2"
+mai_version_fix = ""
 if mai_version_fix:
     if is_test:
         mai_version = f"test-{mai_version_main}-{mai_version_fix}"
@@ -196,6 +196,8 @@ class BotConfig:
     response_interested_rate_amplifier: float = 1.0  # 回复兴趣度放大系数
     down_frequency_rate: float = 3  # 降低回复频率的群组回复意愿降低系数
     emoji_response_penalty: float = 0.0  # 表情包回复惩罚
+    mentioned_bot_inevitable_reply: bool = False # 提及 bot 必然回复
+    at_bot_inevitable_reply: bool = False # @bot 必然回复
 
     # response
     response_mode: str = "heart_flow"  # 回复策略
@@ -446,6 +448,12 @@ class BotConfig:
                 config.down_frequency_rate = willing_config.get("down_frequency_rate", config.down_frequency_rate)
                 config.emoji_response_penalty = willing_config.get(
                     "emoji_response_penalty", config.emoji_response_penalty
+                )
+                config.mentioned_bot_inevitable_reply = willing_config.get(
+                    "mentioned_bot_inevitable_reply", config.mentioned_bot_inevitable_reply
+                )
+                config.at_bot_inevitable_reply = willing_config.get(
+                    "at_bot_inevitable_reply", config.at_bot_inevitable_reply
                 )
 
         def model(parent: dict):
