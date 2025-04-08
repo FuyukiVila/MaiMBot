@@ -225,7 +225,7 @@ def split_into_sentences_w_remove_punctuation(text: str) -> List[str]:
         text = text.replace("\n", " ")
     else:
         # 用"|seg|"作为分割符分开
-        text = re.sub(r"([.!?]) +", r"\1\|seg\|", text)
+        text = re.sub(r"([.!?]) +", r"\1|seg|", text)
         text = text.replace("\n", "|seg|")
     text, mapping = protect_kaomoji(text)
     # print(f"处理前的文本: {text}")
