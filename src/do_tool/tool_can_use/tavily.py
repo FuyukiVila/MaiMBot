@@ -14,14 +14,14 @@ class TavilyTool(BaseTool):
     )
 
     name = "tavily"
-    description = """调用Tavily API进行网络搜索的工具"""
+    description = """调用Tavily API进行网络搜索以获取相关上下文信息"""
 
     parameters = {
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "搜索关键词",
+                "description": "搜索关键词，可以是一个问题或一个主题",
             },
             "max_results": {
                 "type": "number",
