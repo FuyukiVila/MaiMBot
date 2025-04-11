@@ -114,14 +114,6 @@ class CustomWillingManager(BaseWillingManager):
         sender_id = str(willing_info.message.message_info.user_info.user_id)
         group_info = willing_info.message.message_info.group_info
         current_time = time.time()
-        
-        """单独处理私聊"""
-        if group_info is None:
-            if willing_info.is_mentioned_bot:
-                return 1.0
-            if willing_info.is_emoji:
-                return self.global_config.emoji_reply_probability
-            return 0.75
 
         self._ensure_chat_initialized(chat_id)
 
@@ -191,6 +183,14 @@ class CustomWillingManager(BaseWillingManager):
             self.chat_last_sender_id[chat_id] = sender_id
 
         self.chat_reply_willing[chat_id] = min(current_willing, 3.0)
+        
+        """单独处理私聊回复概率"""
+        if group_info is None:
+            if willing_info.is_mentioned_bot:
+                return 1.0
+            if willing_info.is_emoji:
+                return self.global_config.emoji_reply_probability
+            return 0.75
 
         return reply_probability
 
