@@ -1,6 +1,9 @@
-from src.do_tool.tool_can_use.base_tool import BaseTool, register_tool
-from tavily import AsyncTavilyClient
 import os
+from tavily import AsyncTavilyClient
+from src.common.logger import get_module_logger
+from src.do_tool.tool_can_use.base_tool import BaseTool, register_tool
+
+logger = get_module_logger("tavily_tool")
 
 
 class TavilyTool(BaseTool):
@@ -13,7 +16,7 @@ class TavilyTool(BaseTool):
         proxies=proxies,
     )
 
-    name = "tavily"
+    name = "tavily_tool"
     description = """调用Tavily API进行网络搜索以获取相关上下文信息"""
 
     parameters = {
@@ -38,9 +41,27 @@ class TavilyTool(BaseTool):
                 query=function_args["query"],
                 max_results=function_args.get("max_results", 5),
             )
-
+            response = response.encode("utf-8").decode("unicode_escape").replace(u'\u200b', "")
+            # 结果添加到data/raw_info/{query}.txt
+            file_path = "data/raw_info"
+            file_name = function_args["query"].replace(" ", "-") + ".txt"
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+            file_path = os.path.join(file_path, file_name)
+            # 如果文件已经存在，则在文件末尾添加内容
+            try:
+                if os.path.exists(file_path):
+                    with open(file_path, "a", encoding="utf-8") as file:
+                        file.write(response)
+                else:
+                    with open(file_path, "w", encoding="utf-8") as file:
+                        file.write(response)
+            except Exception as e:
+                logger.error(f"文件写入失败: {e}")
+                pass
             return {"name": self.name, "content": response}
         except Exception as e:
+            logger.error(f"搜索失败: {e}")
             return {"name": self.name, "content": "搜索失败, 没有结果返回"}
 
 
