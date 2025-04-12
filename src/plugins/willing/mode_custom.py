@@ -189,7 +189,7 @@ class CustomWillingManager(BaseWillingManager):
             if willing_info.is_mentioned_bot:
                 return 1.0
             if willing_info.is_emoji:
-                return self.global_config.emoji_reply_probability
+                return 0.1
             return 0.75
 
         return reply_probability
