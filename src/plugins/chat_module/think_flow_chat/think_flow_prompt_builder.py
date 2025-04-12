@@ -143,24 +143,24 @@ class PromptBuilder:
         # 回复尽量简短一些。{keywords_reaction_prompt}请注意把握聊天内容，不要回复的太有条理，可以有个性。{prompt_ger}
         # 请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景，尽量不要说你说过的话 ，注意只输出回复内容。
         # {moderation_prompt}。注意：不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。"""
-        prompt = global_prompt_manager.format_prompt(
+        prompt = await global_prompt_manager.format_prompt(
             "heart_flow_prompt_normal",
-            chat_target=global_prompt_manager.get_prompt("chat_target_group1")
+            chat_target=await global_prompt_manager.get_prompt_async("chat_target_group1")
             if chat_in_group
-            else global_prompt_manager.get_prompt("chat_target_private1"),
+            else await global_prompt_manager.get_prompt_async("chat_target_private1"),
             chat_talking_prompt=chat_talking_prompt,
             sender_name=sender_name,
             message_txt=message_txt,
             bot_name=global_config.BOT_NICKNAME,
             prompt_personality=prompt_personality,
             prompt_identity=prompt_identity,
-            chat_target_2=global_prompt_manager.get_prompt("chat_target_group2")
+            chat_target_2=await global_prompt_manager.get_prompt_async("chat_target_group2")
             if chat_in_group
-            else global_prompt_manager.get_prompt("chat_target_private2"),
+            else await global_prompt_manager.get_prompt_async("chat_target_private2"),
             current_mind_info=current_mind_info,
             keywords_reaction_prompt=keywords_reaction_prompt,
             prompt_ger=prompt_ger,
-            moderation_prompt=global_prompt_manager.get_prompt("moderation_prompt"),
+            moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
         )
 
         return prompt
@@ -218,13 +218,13 @@ class PromptBuilder:
         # 你刚刚脑子里在想：{current_mind_info}
         # 现在请你读读之前的聊天记录，然后给出日常，口语化且简短的回复内容，只给出文字的回复内容，不要有内心独白:
         # """
-        prompt = global_prompt_manager.format_prompt(
+        prompt = await global_prompt_manager.format_prompt(
             "heart_flow_prompt_simple",
             bot_name=global_config.BOT_NICKNAME,
             prompt_personality=prompt_personality,
-            chat_target=global_prompt_manager.get_prompt("chat_target_group1")
+            chat_target=await global_prompt_manager.get_prompt_async("chat_target_group1")
             if chat_in_group
-            else global_prompt_manager.get_prompt("chat_target_private1"),
+            else await global_prompt_manager.get_prompt_async("chat_target_private1"),
             chat_talking_prompt=chat_talking_prompt,
             sender_name=sender_name,
             message_txt=message_txt,
@@ -266,14 +266,14 @@ class PromptBuilder:
         # {chat_target}，你希望在群里回复：{content}。现在请你根据以下信息修改回复内容。将这个回复修改的更加日常且口语化的回复，平淡一些，回复尽量简短一些。不要回复的太有条理。
         # {prompt_ger}，不要刻意突出自身学科背景，注意只输出回复内容。
         # {moderation_prompt}。注意：不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。"""
-        prompt = global_prompt_manager.format_prompt(
+        prompt = await global_prompt_manager.format_prompt(
             "heart_flow_prompt_response",
             bot_name=global_config.BOT_NICKNAME,
             prompt_identity=prompt_identity,
-            chat_target=global_prompt_manager.get_prompt("chat_target_group1"),
+            chat_target=await global_prompt_manager.get_prompt_async("chat_target_group1"),
             content=content,
             prompt_ger=prompt_ger,
-            moderation_prompt=global_prompt_manager.get_prompt("moderation_prompt"),
+            moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
         )
 
         return prompt
