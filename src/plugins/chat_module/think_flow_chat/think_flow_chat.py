@@ -289,7 +289,7 @@ class ThinkFlowChat:
                 # 初始化变量为默认值
                 current_mind = None
                 past_mind = None
-                
+
                 try:
                     timer1 = time.time()
                     current_mind, past_mind = await heartflow.get_subheartflow(chat.stream_id).do_thinking_before_reply(
