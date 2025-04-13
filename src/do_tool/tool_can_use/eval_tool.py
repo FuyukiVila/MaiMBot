@@ -115,4 +115,4 @@ class EvalTool(BaseTool):
 
 
 # 注册工具
-register_tool(EvalTool)
+# register_tool(EvalTool)

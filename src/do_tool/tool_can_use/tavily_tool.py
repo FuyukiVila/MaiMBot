@@ -66,4 +66,4 @@ class TavilyTool(BaseTool):
 
 
 # 注册工具
-register_tool(TavilyTool)
+# register_tool(TavilyTool)
