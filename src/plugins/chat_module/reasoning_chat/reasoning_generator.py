@@ -29,11 +29,17 @@ class ResponseGenerator:
             request_type="response_reasoning",
         )
         self.model_normal = LLM_request(
-            model=global_config.llm_normal, temperature=global_config.RESPONSE_TEMPERATURE, max_tokens=global_config.max_response_length, request_type="response_reasoning"
+            model=global_config.llm_normal,
+            temperature=global_config.RESPONSE_TEMPERATURE,
+            max_tokens=global_config.max_response_length,
+            request_type="response_reasoning",
         )
 
         self.model_sum = LLM_request(
-            model=global_config.llm_emotion_judge, temperature=global_config.EMOTION_TEMPERATURE, max_tokens=3000, request_type="relation"
+            model=global_config.llm_emotion_judge,
+            temperature=global_config.EMOTION_TEMPERATURE,
+            max_tokens=3000,
+            request_type="relation",
         )
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"

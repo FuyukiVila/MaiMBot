@@ -41,7 +41,7 @@ class TavilyTool(BaseTool):
                 query=function_args["query"],
                 max_results=function_args.get("max_results", 5),
             )
-            response = response.encode("utf-8").decode("unicode_escape").replace(u'\u200b', "")
+            response = response.encode("utf-8").decode("unicode_escape").replace("\u200b", "")
             # 结果添加到data/raw_info/{query}.txt
             file_path = "data/raw_info"
             file_name = function_args["query"].replace(" ", "-") + ".txt"

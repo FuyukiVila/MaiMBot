@@ -197,7 +197,7 @@ class BotConfig:
     sub_heart_flow_stop_time: int = 600  # 子心流停止时间，超过这个时间没有回复，子心流会停止，间隔 单位秒
     heart_flow_update_interval: int = 300  # 心流更新频率，间隔 单位秒
     HEART_FLOW_TEMPERATURE: float = 1.0  # 心流温度
-    
+
     # willing
     willing_mode: str = "classical"  # 意愿模式
     response_willing_amplifier: float = 1.0  # 回复意愿放大系数
@@ -212,7 +212,7 @@ class BotConfig:
     MODEL_R1_PROBABILITY: float = 0.8  # R1模型概率
     MODEL_V3_PROBABILITY: float = 0.1  # V3模型概率
     RESPONSE_TEMPERATURE: float = 1.0  # 回复温度
-    EMOTION_TEMPERATURE: float = 1.0   # 情感温度
+    EMOTION_TEMPERATURE: float = 1.0  # 情感温度
     # MODEL_R1_DISTILL_PROBABILITY: float = 0.1  # R1蒸馏模型概率
 
     # emoji
@@ -447,7 +447,9 @@ class BotConfig:
             config.heart_flow_update_interval = heartflow_config.get(
                 "heart_flow_update_interval", config.heart_flow_update_interval
             )
-            config.HEART_FLOW_TEMPERATURE = heartflow_config.get("heart_flow_temperature", config.HEART_FLOW_TEMPERATURE)
+            config.HEART_FLOW_TEMPERATURE = heartflow_config.get(
+                "heart_flow_temperature", config.HEART_FLOW_TEMPERATURE
+            )
 
         def willing(parent: dict):
             willing_config = parent["willing"]

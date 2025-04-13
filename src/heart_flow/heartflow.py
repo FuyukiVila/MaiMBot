@@ -61,7 +61,10 @@ class Heartflow:
         self.past_mind = []
         self.current_state: CurrentState = CurrentState()
         self.llm_model = LLM_request(
-            model=global_config.llm_heartflow, temperature=global_config.HEART_FLOW_TEMPERATURE, max_tokens=1000, request_type="heart_flow"
+            model=global_config.llm_heartflow,
+            temperature=global_config.HEART_FLOW_TEMPERATURE,
+            max_tokens=1000,
+            request_type="heart_flow",
         )
 
         self._subheartflows: Dict[Any, SubHeartflow] = {}

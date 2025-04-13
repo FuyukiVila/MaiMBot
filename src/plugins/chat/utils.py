@@ -384,9 +384,9 @@ def calculate_typing_time(
     - 在所有输入结束后，额外加上回车时间0.3秒
     - 如果is_emoji为True，将使用固定1秒的输入时间
     """
-    
+
     # 暂时不需要打字时间
-    return 0.0 
+    return 0.0
     mood_manager = MoodManager.get_instance()
     # 将0-1的唤醒度映射到-1到1
     mood_arousal = mood_manager.current_mood.arousal

@@ -36,7 +36,10 @@ class ChattingObservation(Observation):
         self.sub_observe = None
 
         self.llm_summary = LLM_request(
-            model=global_config.llm_observation, temperature=global_config.HEART_FLOW_TEMPERATURE, max_tokens=300, request_type="chat_observation"
+            model=global_config.llm_observation,
+            temperature=global_config.HEART_FLOW_TEMPERATURE,
+            max_tokens=300,
+            request_type="chat_observation",
         )
 
     # 进行一次观察 返回观察结果observe_info

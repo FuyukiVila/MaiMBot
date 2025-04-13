@@ -3,6 +3,7 @@ import time
 import sys
 import signal
 import threading
+
 try:
     import keyboard  # 需要安装：pip install keyboard
 except ImportError:
@@ -11,6 +12,7 @@ except ImportError:
 
 # 要监控的 Python 程序
 TARGET_SCRIPT = "bot.py"
+
 
 class ProcessMonitor:
     def __init__(self):
@@ -47,7 +49,7 @@ class ProcessMonitor:
         """监听键盘输入（R键重启）"""
         print("按 [R] 键手动重启目标程序，按 [Ctrl+C] 退出监控...")
         while not self.should_exit:
-            if keyboard.is_pressed('r'):  # 检测 R 键
+            if keyboard.is_pressed("r"):  # 检测 R 键
                 self.restart_process()
                 time.sleep(0.5)  # 防抖
             time.sleep(0.1)
@@ -66,6 +68,7 @@ class ProcessMonitor:
         if self.process and self.process.poll() is None:
             self.process.terminate()
         print("监控已停止")
+
 
 if __name__ == "__main__":
     monitor = ProcessMonitor()
