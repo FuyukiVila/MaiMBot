@@ -286,6 +286,10 @@ class ThinkFlowChat:
                 info_catcher.catch_after_observe(timing_results["观察"])
 
                 # 思考前脑内状态
+                # 初始化变量为默认值
+                current_mind = None
+                past_mind = None
+                
                 try:
                     timer1 = time.time()
                     current_mind, past_mind = await heartflow.get_subheartflow(chat.stream_id).do_thinking_before_reply(
@@ -295,10 +299,10 @@ class ThinkFlowChat:
                     )
                     timer2 = time.time()
                     timing_results["思考前脑内状态"] = timer2 - timer1
+                    # 只有在成功获取到mind状态时才调用catch_afer_shf_step
+                    info_catcher.catch_afer_shf_step(timing_results.get("思考前脑内状态", 0), past_mind, current_mind)
                 except Exception as e:
                     logger.error(f"心流思考前脑内状态失败: {e}")
-
-                info_catcher.catch_afer_shf_step(timing_results.get("思考前脑内状态", 0), past_mind, current_mind)
 
                 # 生成回复
                 timer1 = time.time()
