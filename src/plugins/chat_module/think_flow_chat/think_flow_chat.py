@@ -424,7 +424,7 @@ class ThinkFlowChat:
                     logger.error(traceback.format_exc())
 
                 # 更新关系
-                if info["change_relationship"]:
+                if "info" in locals() and info.get("change_relationship"):
                     ori_response = ",".join(response_set)
                     stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text,info["change_relationship"]["content"])
                     await relationship_manager.calculate_update_relationship_value(
