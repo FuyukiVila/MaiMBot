@@ -298,7 +298,7 @@ class ThinkFlowChat:
                 except Exception as e:
                     logger.error(f"心流思考前脑内状态失败: {e}")
 
-                info_catcher.catch_afer_shf_step(timing_results["思考前脑内状态"], past_mind, current_mind)
+                info_catcher.catch_afer_shf_step(timing_results.get("思考前脑内状态", 0), past_mind, current_mind)
 
                 # 生成回复
                 timer1 = time.time()
