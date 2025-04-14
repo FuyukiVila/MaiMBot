@@ -327,7 +327,6 @@ class ThinkFlowChat:
                     
                 
                 # 思考前脑内状态
-                # 初始化变量为默认值
                 current_mind = None
                 past_mind = None
 
@@ -343,6 +342,8 @@ class ThinkFlowChat:
                         )
                 except Exception as e:
                     logger.error(f"心流思考前脑内状态失败: {e}")
+
+                info_catcher.catch_afer_shf_step(timing_results["思考前脑内状态"], past_mind, current_mind)
 
                 # 生成回复
                 with Timer("生成回复", timing_results):
