@@ -24,7 +24,7 @@ class ResponseGenerator:
     def __init__(self):
         self.model_reasoning = LLM_request(
             model=global_config.llm_reasoning,
-            temperature=global_config.RESPONSE_TEMPERATURE,
+            temperature=global_config.llm_reasoning["temp"],
             max_tokens=global_config.max_response_length + 5000,
             request_type="response_reasoning",
         )
@@ -37,7 +37,7 @@ class ResponseGenerator:
 
         self.model_sum = LLM_request(
             model=global_config.llm_emotion_judge,
-            temperature=global_config.EMOTION_TEMPERATURE,
+            temperature=global_config.llm_emotion_judge["temp"],
             max_tokens=3000,
             request_type="relation",
         )

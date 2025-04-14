@@ -28,13 +28,13 @@ class ResponseGenerator:
         self.model_normal = LLM_request(
             model=global_config.llm_normal,
             temperature=global_config.llm_normal["temp"],
-            max_tokens=256,
+            max_tokens=global_config.max_response_length,
             request_type="response_heartflow",
         )
 
         self.model_sum = LLM_request(
             model=global_config.llm_emotion_judge,
-            temperature=global_config.EMOTION_TEMPERATURE,
+            temperature=global_config.llm_emotion_judge["temp"],
             max_tokens=2000,
             request_type="relation",
         )

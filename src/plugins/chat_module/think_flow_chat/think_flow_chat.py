@@ -317,7 +317,6 @@ class ThinkFlowChat:
                     )
 
                 # 思考前脑内状态
-
                 try:
                     with Timer("思考前脑内状态", timing_results):
                         current_mind, past_mind = await heartflow.get_subheartflow(
@@ -329,9 +328,10 @@ class ThinkFlowChat:
                             obs_id=get_mid_memory_id,
                             extra_info=tool_result_info,
                         )
-                        info_catcher.catch_afer_shf_step(timing_results["思考前脑内状态"], past_mind, current_mind)
                 except Exception as e:
                     logger.error(f"心流思考前脑内状态失败: {e}")
+
+                info_catcher.catch_afer_shf_step(timing_results["思考前脑内状态"], past_mind, current_mind)
 
                 # 生成回复
                 with Timer("生成回复", timing_results):

@@ -213,8 +213,6 @@ class BotConfig:
     response_mode: str = "heart_flow"  # 回复策略
     MODEL_R1_PROBABILITY: float = 0.8  # R1模型概率
     MODEL_V3_PROBABILITY: float = 0.1  # V3模型概率
-    RESPONSE_TEMPERATURE: float = 1.0  # 回复温度
-    EMOTION_TEMPERATURE: float = 1.0  # 情感温度
     # MODEL_R1_DISTILL_PROBABILITY: float = 0.1  # R1蒸馏模型概率
 
     # emoji
@@ -225,7 +223,6 @@ class BotConfig:
     EMOJI_SAVE: bool = True  # 偷表情包
     EMOJI_CHECK: bool = False  # 是否开启过滤
     EMOJI_CHECK_PROMPT: str = "符合公序良俗"  # 表情包过滤要求
-    VLM_TEMPERATURE: float = 1.0  # VLM温度
 
     # memory
     build_memory_interval: int = 600  # 记忆构建间隔（秒）
@@ -409,7 +406,6 @@ class BotConfig:
             config.EMOJI_CHECK_PROMPT = emoji_config.get("check_prompt", config.EMOJI_CHECK_PROMPT)
             config.EMOJI_SAVE = emoji_config.get("auto_save", config.EMOJI_SAVE)
             config.EMOJI_CHECK = emoji_config.get("enable_check", config.EMOJI_CHECK)
-            config.VLM_TEMPERATURE = emoji_config.get("vlm_temperature", config.VLM_TEMPERATURE)
             if config.INNER_VERSION in SpecifierSet(">=1.1.1"):
                 config.max_emoji_num = emoji_config.get("max_emoji_num", config.max_emoji_num)
                 config.max_reach_deletion = emoji_config.get("max_reach_deletion", config.max_reach_deletion)
@@ -426,8 +422,6 @@ class BotConfig:
             response_config = parent["response"]
             config.MODEL_R1_PROBABILITY = response_config.get("model_r1_probability", config.MODEL_R1_PROBABILITY)
             config.MODEL_V3_PROBABILITY = response_config.get("model_v3_probability", config.MODEL_V3_PROBABILITY)
-            config.RESPONSE_TEMPERATURE = response_config.get("response_temperature", config.RESPONSE_TEMPERATURE)
-            config.EMOTION_TEMPERATURE = response_config.get("emotion_temperature", config.EMOTION_TEMPERATURE)
             # config.MODEL_R1_DISTILL_PROBABILITY = response_config.get(
             #     "model_r1_distill_probability", config.MODEL_R1_DISTILL_PROBABILITY
             # )

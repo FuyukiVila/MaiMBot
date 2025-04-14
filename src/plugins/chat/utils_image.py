@@ -33,7 +33,7 @@ class ImageManager:
             self._ensure_image_dir()
             self._initialized = True
             self._llm = LLM_request(
-                model=global_config.vlm, temperature=global_config.VLM_TEMPERATURE, max_tokens=300, request_type="image"
+                model=global_config.vlm, temperature=global_config.vlm["temp"], max_tokens=300, request_type="image"
             )
 
     def _ensure_image_dir(self):
