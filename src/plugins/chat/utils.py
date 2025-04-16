@@ -339,7 +339,7 @@ def random_remove_punctuation(text: str) -> str:
 
 def process_llm_response(text: str) -> List[str]:
     # 提取被 () 或 [] 包裹的内容
-    pattern = re.compile(r"[(\[].*?[\)\]")
+    pattern = re.compile(r"[(\[].*?[\)\]]")
     _extracted_contents = pattern.findall(text)
     # 去除 () 和 [] 及其包裹的内容
     cleaned_text = pattern.sub("", text)
