@@ -9,7 +9,7 @@ import io
 
 from ...common.database import db
 from ..config.config import global_config
-from ..models.utils_model import LLM_request
+from ..models.utils_model import LLMRequest
 
 from src.common.logger import get_module_logger
 
@@ -32,7 +32,7 @@ class ImageManager:
             self._ensure_description_collection()
             self._ensure_image_dir()
             self._initialized = True
-            self._llm = LLM_request(
+            self._llm = LLMRequest(
                 model=global_config.vlm, temperature=global_config.vlm["temp"], max_tokens=300, request_type="image"
             )
 

@@ -1,7 +1,7 @@
 from .observation import Observation, ChattingObservation
 import asyncio
 from src.plugins.moods.moods import MoodManager
-from src.plugins.models.utils_model import LLM_request
+from src.plugins.models.utils_model import LLMRequest
 from src.plugins.config.config import global_config
 import time
 from src.plugins.chat.message import UserInfo
@@ -79,7 +79,7 @@ class SubHeartflow:
         self.current_mind = ""
         self.past_mind = []
         self.current_state: CurrentState = CurrentState()
-        self.llm_model = LLM_request(
+        self.llm_model = LLMRequest(
             model=global_config.llm_sub_heartflow,
             temperature=global_config.llm_sub_heartflow["temp"],
             max_tokens=600,
@@ -210,8 +210,10 @@ class SubHeartflow:
         relation_prompt_all = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
             relation_prompt, sender_info.user_nickname
         )
-        
-        sender_name_sign = f"<{chat_stream.platform}:{sender_info.user_id}:{sender_info.user_nickname}:{sender_info.user_cardname}>"
+
+        sender_name_sign = (
+            f"<{chat_stream.platform}:{sender_info.user_id}:{sender_info.user_nickname}:{sender_info.user_cardname}>"
+        )
 
         # prompt = ""
         # # prompt += f"麦麦的总体想法是：{self.main_heartflow_info}\n\n"
@@ -230,7 +232,7 @@ class SubHeartflow:
         # prompt += f"记得结合上述的消息，生成内心想法，文字不要浮夸，注意你就是{self.bot_name}，{self.bot_name}指的就是你。"
 
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        
+
         prompt = (await global_prompt_manager.get_prompt_async("sub_heartflow_prompt_before")).format(
             extra_info_prompt,
             # prompt_schedule,
@@ -244,7 +246,7 @@ class SubHeartflow:
             message_txt,
             self.bot_name,
         )
-        
+
         prompt = await relationship_manager.convert_all_person_sign_to_person_name(prompt)
         prompt = parse_text_timestamps(prompt, mode="lite")
 
@@ -294,7 +296,7 @@ class SubHeartflow:
 
         message_new_info = chat_talking_prompt
         reply_info = reply_content
-        
+
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
         prompt = (await global_prompt_manager.get_prompt_async("sub_heartflow_prompt_after")).format(
@@ -307,7 +309,7 @@ class SubHeartflow:
             reply_info,
             mood_info,
         )
-        
+
         prompt = await relationship_manager.convert_all_person_sign_to_person_name(prompt)
         prompt = parse_text_timestamps(prompt, mode="lite")
 

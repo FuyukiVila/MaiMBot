@@ -13,7 +13,7 @@ from ...common.database import db
 from ..config.config import global_config
 from ..chat.utils import get_embedding
 from ..chat.utils_image import ImageManager, image_path_to_base64
-from ..models.utils_model import LLM_request
+from ..models.utils_model import LLMRequest
 from src.common.logger import get_module_logger
 
 logger = get_module_logger("emoji")
@@ -34,10 +34,10 @@ class EmojiManager:
 
     def __init__(self):
         self._scan_task = None
-        self.vlm = LLM_request(
+        self.vlm = LLMRequest(
             model=global_config.vlm, temperature=global_config.vlm["temp"], max_tokens=1000, request_type="emoji"
         )
-        self.llm_emotion_judge = LLM_request(
+        self.llm_emotion_judge = LLMRequest(
             model=global_config.llm_emotion_judge,
             max_tokens=600,
             temperature=global_config.llm_emotion_judge["temp"],

@@ -2,7 +2,7 @@ from typing import List, Optional
 import random
 
 
-from ...models.utils_model import LLM_request
+from ...models.utils_model import LLMRequest
 from ...config.config import global_config
 from ...chat.message import MessageRecv
 from .think_flow_prompt_builder import prompt_builder
@@ -25,14 +25,14 @@ logger = get_module_logger("llm_generator", config=llm_config)
 
 class ResponseGenerator:
     def __init__(self):
-        self.model_normal = LLM_request(
+        self.model_normal = LLMRequest(
             model=global_config.llm_normal,
             temperature=global_config.llm_normal["temp"],
             max_tokens=global_config.max_response_length,
             request_type="response_heartflow",
         )
 
-        self.model_sum = LLM_request(
+        self.model_sum = LLMRequest(
             model=global_config.llm_emotion_judge,
             temperature=global_config.llm_emotion_judge["temp"],
             max_tokens=2000,
@@ -97,7 +97,7 @@ class ResponseGenerator:
             return None
 
     async def _generate_response_with_model(
-        self, message: MessageRecv, model: LLM_request, thinking_id: str, mode: str = "normal"
+        self, message: MessageRecv, model: LLMRequest, thinking_id: str, mode: str = "normal"
     ) -> str:
         sender_name = ""
 
@@ -112,7 +112,7 @@ class ResponseGenerator:
         #     sender_name = f"({message.chat_stream.user_info.user_id}){message.chat_stream.user_info.user_nickname}"
         # else:
         #     sender_name = f"用户({message.chat_stream.user_info.user_id})"
-            
+
         sender_name = f"<{message.chat_stream.user_info.platform}:{message.chat_stream.user_info.user_id}:{message.chat_stream.user_info.user_nickname}:{message.chat_stream.user_info.user_cardname}>"
 
         # 构建prompt

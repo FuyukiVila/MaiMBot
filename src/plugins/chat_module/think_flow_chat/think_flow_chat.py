@@ -8,7 +8,7 @@ from ...config.config import global_config
 from ...chat.emoji_manager import emoji_manager
 from .think_flow_generator import ResponseGenerator
 from ...chat.message import MessageSending, MessageRecv, MessageThinking, MessageSet
-from ...chat.message_sender import message_manager
+from ...chat.messagesender import message_manager
 from ...storage.storage import MessageStorage
 from ...chat.utils import is_mentioned_bot_in_message, get_recent_group_detailed_plain_text
 from ...chat.utils_image import image_path_to_base64
@@ -235,7 +235,6 @@ class ThinkFlowChat:
         do_reply = False
         if random() < reply_probability:
             try:
-                
                 do_reply = True
 
                 # 回复前处理
@@ -397,12 +396,11 @@ class ThinkFlowChat:
 
                 # 回复后处理
                 await willing_manager.after_generate_reply_handle(message.message_info.message_id)
-                
+
                 # 处理认识关系
                 try:
                     is_known = await relationship_manager.is_known_some_one(
-                        message.message_info.platform, 
-                        message.message_info.user_info.user_id
+                        message.message_info.platform, message.message_info.user_info.user_id
                     )
                     if not is_known:
                         logger.info(f"首次认识用户: {message.message_info.user_info.user_nickname}")
@@ -410,22 +408,23 @@ class ThinkFlowChat:
                             message.message_info.platform,
                             message.message_info.user_info.user_id,
                             message.message_info.user_info.user_nickname,
-                            message.message_info.user_info.user_cardname or message.message_info.user_info.user_nickname,
-                            ""
+                            message.message_info.user_info.user_cardname
+                            or message.message_info.user_info.user_nickname,
+                            "",
                         )
                     else:
                         logger.debug(f"已认识用户: {message.message_info.user_info.user_nickname}")
                         if not await relationship_manager.is_qved_name(
-                            message.message_info.platform, 
-                            message.message_info.user_info.user_id
+                            message.message_info.platform, message.message_info.user_info.user_id
                         ):
                             logger.info(f"更新已认识但未取名的用户: {message.message_info.user_info.user_nickname}")
                             await relationship_manager.first_knowing_some_one(
                                 message.message_info.platform,
                                 message.message_info.user_info.user_id,
                                 message.message_info.user_info.user_nickname,
-                                message.message_info.user_info.user_cardname or message.message_info.user_info.user_nickname,
-                                ""
+                                message.message_info.user_info.user_cardname
+                                or message.message_info.user_info.user_nickname,
+                                "",
                             )
                 except Exception as e:
                     logger.error(f"处理认识关系失败: {e}")
