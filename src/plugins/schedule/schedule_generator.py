@@ -33,7 +33,7 @@ class ScheduleGenerator:
         self.llm_scheduler_all = LLMRequest(
             model=global_config.llm_reasoning,
             temperature=global_config.SCHEDULE_TEMPERATURE + 0.3,
-            max_tokens=7000,
+            max_tokens=12000,
             request_type="schedule",
         )
         self.llm_scheduler_doing = LLMRequest(
