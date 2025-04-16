@@ -521,8 +521,8 @@ def protect_kaomoji(sentence):
         r"]"
         r")"
         r"|"
-        r"([▼▽・ᴥω･﹏^><≧≦￣｀´∀ヮДд︿﹀へ｡ﾟ╥╯╰︶︹•⁄]{2,15"
-        r"}"
+        r"([▼▽・ᴥω･﹏^><≧≦￣｀´∀ヮДд︿﹀へ｡ﾟ╥╯╰︶︹•⁄]{2,15}"
+        r"})"
     )
 
     kaomoji_matches = kaomoji_pattern.findall(sentence)
