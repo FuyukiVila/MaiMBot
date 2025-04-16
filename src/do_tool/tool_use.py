@@ -1,6 +1,7 @@
 from src.plugins.models.utils_model import LLMRequest
 from src.plugins.config.config import global_config
 from src.plugins.chat.chat_stream import ChatStream
+from src.plugins.chat.utils import get_recent_group_detailed_plain_text
 from src.common.database import db
 import time
 import json
