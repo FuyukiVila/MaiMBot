@@ -2,7 +2,6 @@ from .mode_dynamic import DynamicWillingManager
 
 
 class CustomWillingManager(DynamicWillingManager):
-
     async def get_reply_probability(self, message_id):
         willing_info = self.ongoing_messages[message_id]
         group_info = willing_info.message.message_info.group_info
