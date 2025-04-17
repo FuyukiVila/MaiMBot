@@ -244,3 +244,4 @@ logs
 config/old/bot_config_20250405_212257.toml
 .roo*
 memory-bank/
+.DS_Store
