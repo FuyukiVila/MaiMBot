@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Tuple, Union
 
 import aiohttp
+from httpx import patch
 from src.common.logger import get_module_logger
 import base64
 from PIL import Image
@@ -190,6 +191,9 @@ class LLM_request:
         # 先构建payload，再添加流式输出标志
         if stream_mode:
             payload["stream"] = stream_mode
+        
+        if payload.get("max_tokens"):
+            payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
 
         for retry in range(policy["max_retries"]):
             try:
