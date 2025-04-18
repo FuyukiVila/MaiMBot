@@ -195,6 +195,10 @@ class LLM_request:
         if payload.get("max_tokens"):
             payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
 
+        # 移除 max_tokens 参数，由服务器自动指定
+        if "max_tokens" in payload:
+            del payload["max_tokens"]
+
         for retry in range(policy["max_retries"]):
             try:
                 # 使用上下文管理器处理会话
