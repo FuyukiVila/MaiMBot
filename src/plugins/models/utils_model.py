@@ -190,7 +190,7 @@ class LLM_request:
         # 先构建payload，再添加流式输出标志
         if stream_mode:
             payload["stream"] = stream_mode
-        
+
         if payload.get("max_tokens"):
             payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
 
