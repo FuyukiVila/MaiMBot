@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Tuple, Union
 
 import aiohttp
-from httpx import patch
 from src.common.logger import get_module_logger
 import base64
 from PIL import Image
