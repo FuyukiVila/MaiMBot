@@ -37,7 +37,7 @@ class ScheduleGenerator:
             request_type="schedule",
         )
         self.llm_scheduler_doing = LLM_request(
-            model=global_config.llm_heartflow,
+            model=global_config.llm_normal,
             temperature=global_config.SCHEDULE_TEMPERATURE,
             max_tokens=2048,
             request_type="schedule",
