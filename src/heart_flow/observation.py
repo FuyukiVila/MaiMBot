@@ -54,10 +54,7 @@ class ChattingObservation(Observation):
         self.now_message_info = self.translate_message_list_to_str(self.talking_message)  # 更新初始的 now_message_info
 
         self.llm_summary = LLMRequest(
-            model=global_config.llm_observation,
-            temperature=global_config.llm_observation["temp"],
-            max_tokens=300,
-            request_type="chat_observation",
+            model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 
     # 进行一次观察 返回观察结果observe_info
