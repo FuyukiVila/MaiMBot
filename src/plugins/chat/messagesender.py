@@ -225,7 +225,14 @@ class MessageManager:
                     and not message_earliest.is_private_message()  # 避免在私聊时插入reply
                 ):
                     logger.debug(f"设置回复消息{message_earliest.processed_plain_text}")
-                    message_earliest.set_reply()
+                    # 在调用 set_reply 前检查 message_info 是否存在
+                    if message_earliest.message_info is None:
+                        logger.error(
+                            f"错误：尝试为消息设置回复时，message_info 为 None。跳过 set_reply。"
+                            f"Message 对象详情: {vars(message_earliest)}"
+                        )
+                    else:
+                        message_earliest.set_reply()
 
                 await message_earliest.process()
 
