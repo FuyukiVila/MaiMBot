@@ -610,12 +610,16 @@ class LLMRequest:
 
         # 构建请求体
         if image_base64:
+            image_base64 = compress_base64_image_by_scale(image_base64)  # 压缩图片
             payload = await self._build_payload(prompt, image_base64, image_format)
         elif payload is None:
             payload = await self._build_payload(prompt)
 
         if stream_mode:
             payload["stream"] = stream_mode
+        
+        if payload.get("max_tokens"):
+            payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
 
         return {
             "policy": policy,
