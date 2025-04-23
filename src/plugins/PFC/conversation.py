@@ -256,7 +256,7 @@ class Conversation:
                 "message_id": f"bot_reply_{int(time.time())}",  # 使用时间戳生成一个唯一的message_id，并加上前缀
                 "time": time.time(),
                 "processed_plain_text": self.generated_reply,
-                "detailed_plain_text": f'[{time.time()}] <qq:{global_config.BOT_QQ}:{global_config.BOT_NICKNAME}:>: {self.generated_reply}',
+                "detailed_plain_text": f"[{time.time()}] <qq:{global_config.BOT_QQ}:{global_config.BOT_NICKNAME}:>: {self.generated_reply}",
                 "user_info": {
                     "user_id": global_config.BOT_QQ,
                     "user_nickname": global_config.BOT_NICKNAME,
