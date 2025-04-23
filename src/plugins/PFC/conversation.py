@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import time
 from typing import Dict, Any
 from ..chat.message import Message
 from .pfc_types import ConversationState
@@ -14,6 +15,7 @@ from ..message.message_base import UserInfo
 from src.plugins.chat.chat_stream import chat_manager
 from .pfc_KnowledgeFetcher import KnowledgeFetcher
 from .waiter import Waiter
+from ...config.config import global_config
 
 import traceback
 
@@ -245,7 +247,21 @@ class Conversation:
             return
 
         try:
+            # 发送消息
             await self.direct_sender.send_message(chat_stream=self.chat_stream, content=self.generated_reply)
+
+            # 构造机器人消息字典并更新 observation_info
+            # 构造机器人消息字典并更新 observation_info
+            bot_message = {
+                "message_id": f"bot_reply_{int(time.time())}",  # 使用时间戳生成一个唯一的message_id，并加上前缀
+                "time": time.time(),
+                "processed_plain_text": self.generated_reply,
+                "detailed_plain_text": self.generated_reply,
+                "user_info": {"user_id": str(global_config.qq), "user_nickname": global_config.BOT_NICKNAME}, # 使用从配置获取的qq号作为user_id和昵称
+            }
+            self.observation_info.update_from_message(bot_message)
+            self.observation_info.clear_unprocessed_messages() # 将机器人消息添加到chat_history
+
             self.chat_observer.trigger_update()  # 触发立即更新
             if not await self.chat_observer.wait_for_update():
                 logger.warning("等待消息更新超时")
