@@ -258,7 +258,7 @@ class Conversation:
                 "processed_plain_text": self.generated_reply,
                 "detailed_plain_text": self.generated_reply,
                 "user_info": {
-                    "user_id": str(global_config.qq),
+                    "user_id": global_config.BOT_QQ,
                     "user_nickname": global_config.BOT_NICKNAME,
                 },  # 使用从配置获取的qq号作为user_id和昵称
             }
