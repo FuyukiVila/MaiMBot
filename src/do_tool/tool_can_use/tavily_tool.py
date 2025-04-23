@@ -42,8 +42,8 @@ class TavilyTool(BaseTool):
                 max_results=function_args.get("max_results", 5),
             )
             response = response.encode("utf-8").decode("unicode_escape").replace("\u200b", "")
-            # 结果添加到data/raw_info/{query}.txt
-            file_path = "data/raw_info"
+            # 结果添加到data/lpmm_raw_data/{query}.txt
+            file_path = "data/lpmm_raw_data"
             file_name = function_args["query"].replace(" ", "-") + ".txt"
             if not os.path.exists(file_path):
                 os.makedirs(file_path)
