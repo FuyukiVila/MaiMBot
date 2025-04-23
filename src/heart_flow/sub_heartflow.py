@@ -151,8 +151,14 @@ class InterestChatting:
             return
 
         currently_above = self.interest_level >= self.trigger_threshold
+        chat_level = self.interest_level >= (self.trigger_threshold / 2)  # 达到聊天阈值
         previous_is_above = self.is_above_threshold
 
+        # 添加一个延迟切换到ABSENT的机制
+        self.below_threshold_time = getattr(self, 'below_threshold_time', 0)
+        self.high_interest_level = getattr(self, 'high_interest_level', False)
+
+        # 原有的FOCUSED状态转换逻辑保持不变
         if currently_above:
             if not self.is_above_threshold:
                 self.current_reply_probability = self.base_reply_probability
@@ -164,18 +170,47 @@ class InterestChatting:
                 self.current_reply_probability += increase_amount
 
             self.current_reply_probability = min(self.current_reply_probability, self.max_reply_probability)
+            self.below_threshold_time = 0
+            self.high_interest_level = False
+
+        # 新增的CHAT状态转换逻辑
+        elif chat_level:
+            # 如果达到聊天阈值但未达到心流阈值，进入CHAT状态
+            if self.state_change_callback:
+                try:
+                    await self.state_change_callback(ChatState.CHAT)
+                    interest_logger.debug(
+                        f"兴趣达到聊天阈值 ({self.trigger_threshold/2:.1f}), 进入CHAT状态"
+                    )
+                except Exception as e:
+                    interest_logger.error(f"Error calling state_change_callback for CHAT: {e}")
+                
+            self.below_threshold_time = 0
+            increase_amount = self.probability_increase_rate * time_delta
+            self.current_reply_probability = min(
+                self.base_reply_probability + increase_amount,
+                self.max_reply_probability * 0.7  # CHAT状态下限制最大概率
+            )
 
         else:
+            # 低于聊天阈值的情况
             if previous_is_above:
+                self.below_threshold_time = time_delta
+            else:
+                self.below_threshold_time += time_delta
+
+            # 只有在持续低于聊天阈值超过30秒时，才切换到ABSENT
+            if self.below_threshold_time > 30:
                 if self.state_change_callback:
                     try:
                         await self.state_change_callback(ChatState.ABSENT)
+                        interest_logger.debug(f"兴趣持续低于聊天阈值，切换到ABSENT状态")
                     except Exception as e:
                         interest_logger.error(f"Error calling state_change_callback for ABSENT: {e}")
 
             if 0 < self.probability_decay_factor < 1:
-                decay_multiplier = math.pow(self.probability_decay_factor, time_delta)
-                self.current_reply_probability *= decay_multiplier
+                modified_decay_factor = math.pow(self.probability_decay_factor, time_delta * 0.5)
+                self.current_reply_probability *= modified_decay_factor
                 if self.current_reply_probability < 1e-6:
                     self.current_reply_probability = 0.0
             elif self.probability_decay_factor <= 0:
@@ -183,7 +218,11 @@ class InterestChatting:
                     interest_logger.warning(f"无效的衰减因子 ({self.probability_decay_factor}). 设置概率为0.")
                     self.current_reply_probability = 0.0
 
-            self.current_reply_probability = max(self.current_reply_probability, 0.0)
+            # 如果之前是高兴趣状态，保持一个较高的基础概率
+            if self.high_interest_level:
+                self.current_reply_probability = max(self.current_reply_probability, self.base_reply_probability * 0.5)
+            else:
+                self.current_reply_probability = max(self.current_reply_probability, 0.0)
 
         self.is_above_threshold = currently_above
 
@@ -284,18 +323,34 @@ class SubHeartflow:
 
         # --- Entering CHAT state ---
         if new_state == ChatState.CHAT:
+            allow_bypass_limit = False
+            current_interest = 0.0
+            
+            try:
+                # 获取当前兴趣度
+                current_interest = await self.interest_chatting.get_interest()
+                # 如果兴趣度超过阈值的1.5倍，允许绕过限制
+                allow_bypass_limit = current_interest >= (self.interest_chatting.trigger_threshold * 1.5)
+            except Exception as e:
+                logger.error(f"{log_prefix} 获取兴趣度时出错: {e}")
+
             normal_limit = current_mai_state.get_normal_chat_max_num()
             current_chat_count = self.parent_heartflow.count_subflows_by_state(ChatState.CHAT)
 
-            if current_chat_count >= normal_limit:
+            if current_chat_count >= normal_limit and not allow_bypass_limit:
                 logger.debug(
                     f"{log_prefix} 拒绝从 {current_state.value} 转换到 CHAT。原因：CHAT 状态已达上限 ({normal_limit})。当前数量: {current_chat_count}"
                 )
                 return  # Block the state transition
             else:
-                logger.debug(
-                    f"{log_prefix} 允许从 {current_state.value} 转换到 CHAT (上限: {normal_limit}, 当前: {current_chat_count})"
-                )
+                if current_chat_count >= normal_limit:
+                    logger.info(
+                        f"{log_prefix} 虽然达到CHAT上限 ({normal_limit})，但由于兴趣度较高 ({current_interest:.2f})，允许转换到 CHAT 状态"
+                    )
+                else:
+                    logger.debug(
+                        f"{log_prefix} 允许从 {current_state.value} 转换到 CHAT (上限: {normal_limit}, 当前: {current_chat_count})"
+                    )
                 # If transitioning out of FOCUSED, shut down HeartFChatting first
                 if current_state == ChatState.FOCUSED and self.heart_fc_instance:
                     logger.info(f"{log_prefix} 从 FOCUSED 转换到 CHAT，正在关闭 HeartFChatting...")
