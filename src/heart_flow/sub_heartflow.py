@@ -155,8 +155,8 @@ class InterestChatting:
         previous_is_above = self.is_above_threshold
 
         # 添加一个延迟切换到ABSENT的机制
-        self.below_threshold_time = getattr(self, 'below_threshold_time', 0)
-        self.high_interest_level = getattr(self, 'high_interest_level', False)
+        self.below_threshold_time = getattr(self, "below_threshold_time", 0)
+        self.high_interest_level = getattr(self, "high_interest_level", False)
 
         # 原有的FOCUSED状态转换逻辑保持不变
         if currently_above:
@@ -178,18 +178,16 @@ class InterestChatting:
             # 如果达到聊天阈值但未达到心流阈值，进入CHAT状态
             if self.state_change_callback:
                 try:
-                    await self.state_change_callback(ChatState.CHAT)
-                    interest_logger.debug(
-                        f"兴趣达到聊天阈值 ({self.trigger_threshold/2:.1f}), 进入CHAT状态"
-                    )
+                    if await self.state_change_callback(ChatState.CHAT):
+                        interest_logger.debug(f"兴趣达到聊天阈值 ({self.trigger_threshold / 2:.1f}), 进入CHAT状态")
                 except Exception as e:
                     interest_logger.error(f"Error calling state_change_callback for CHAT: {e}")
-                
+
             self.below_threshold_time = 0
             increase_amount = self.probability_increase_rate * time_delta
             self.current_reply_probability = min(
                 self.base_reply_probability + increase_amount,
-                self.max_reply_probability * 0.7  # CHAT状态下限制最大概率
+                self.max_reply_probability * 0.7,  # CHAT状态下限制最大概率
             )
 
         else:
@@ -203,8 +201,8 @@ class InterestChatting:
             if self.below_threshold_time > 30:
                 if self.state_change_callback:
                     try:
-                        await self.state_change_callback(ChatState.ABSENT)
-                        interest_logger.debug(f"兴趣持续低于聊天阈值，切换到ABSENT状态")
+                        if await self.state_change_callback(ChatState.ABSENT):
+                            interest_logger.debug(f"兴趣持续低于聊天阈值，切换到ABSENT状态")
                     except Exception as e:
                         interest_logger.error(f"Error calling state_change_callback for ABSENT: {e}")
 
@@ -311,12 +309,14 @@ class SubHeartflow:
         )
 
     async def set_chat_state(self, new_state: "ChatState"):
-        """更新sub_heartflow的聊天状态，并管理 HeartFChatting 实例"""
+        """更新sub_heartflow的聊天状态，并管理 HeartFChatting 实例
+        返回True表示状态有变更，False表示无变更
+        """
 
         current_state = self.chat_state.chat_status
         if current_state == new_state:
             logger.trace(f"[{self.subheartflow_id}] State already {current_state.value}, no change.")
-            return  # No change needed
+            return False  # No change needed
 
         log_prefix = f"[{chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id}]"
         current_mai_state = self.parent_heartflow.current_state.mai_status
@@ -325,7 +325,7 @@ class SubHeartflow:
         if new_state == ChatState.CHAT:
             allow_bypass_limit = False
             current_interest = 0.0
-            
+
             try:
                 # 获取当前兴趣度
                 current_interest = await self.interest_chatting.get_interest()
@@ -341,7 +341,7 @@ class SubHeartflow:
                 logger.debug(
                     f"{log_prefix} 拒绝从 {current_state.value} 转换到 CHAT。原因：CHAT 状态已达上限 ({normal_limit})。当前数量: {current_chat_count}"
                 )
-                return  # Block the state transition
+                return False  # Block the state transition
             else:
                 if current_chat_count >= normal_limit:
                     logger.info(
@@ -366,7 +366,7 @@ class SubHeartflow:
                 logger.debug(
                     f"{log_prefix} 拒绝从 {current_state.value} 转换到 FOCUSED。原因：FOCUSED 状态已达上限 ({focused_limit})。当前数量: {current_focused_count}"
                 )
-                return  # Block the state transition
+                return False  # Block the state transition
             else:
                 logger.debug(
                     f"{log_prefix} 允许从 {current_state.value} 转换到 FOCUSED (上限: {focused_limit}, 当前: {current_focused_count})"
@@ -390,12 +390,12 @@ class SubHeartflow:
                                 f"{log_prefix} HeartFChatting 实例初始化失败，状态回滚到 {current_state.value}"
                             )
                             self.heart_fc_instance = None
-                            return  # Prevent state change if HeartFChatting fails to init
+                            return False  # Prevent state change if HeartFChatting fails to init
                     except Exception as e:
                         logger.error(f"{log_prefix} 创建 HeartFChatting 实例时出错: {e}")
                         logger.error(traceback.format_exc())
                         self.heart_fc_instance = None
-                        return  # Prevent state change on error
+                        return False  # Prevent state change on error
 
                 else:
                     logger.warning(f"{log_prefix} 尝试进入 FOCUSED 状态，但 HeartFChatting 实例已存在。")
@@ -410,6 +410,7 @@ class SubHeartflow:
         self.chat_state.chat_status = new_state
         self.last_active_time = time.time()
         logger.info(f"{log_prefix} 聊天状态从 {current_state.value} 变更为 {new_state.value}")
+        return True
 
     async def subheartflow_start_working(self):
         while True:
