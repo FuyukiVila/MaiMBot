@@ -618,7 +618,11 @@ class LLMRequest:
         if stream_mode:
             payload["stream"] = stream_mode
 
-        if payload.get("max_tokens"):
+        # 如果模型是gemini系列，将max_tokens设置为max(max_tokens, 10000)
+        if "gemini" in self.model_name.lower():
+            current_max_tokens = payload.get("max_tokens", 0)
+            payload["max_tokens"] = max(current_max_tokens, 10000)
+        elif payload.get("max_tokens"):
             payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
 
         return {
