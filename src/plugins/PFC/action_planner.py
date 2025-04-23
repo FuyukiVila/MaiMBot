@@ -130,6 +130,7 @@ class ActionPlanner:
 最近的对话记录：
 {chat_history_text}
 
+注意，{global_config.BOT_NICKNAME}就是你的发言，你就是{global_config.BOT_NICKNAME}。
 请你接下去想想要你要做什么，可以发言，可以等待，可以倾听，可以调取知识。注意不同行动类型的要求，不要重复发言：
 行动类型：
 fetch_knowledge: 需要调取知识，当需要专业知识或特定信息时选择
