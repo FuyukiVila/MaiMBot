@@ -257,10 +257,13 @@ class Conversation:
                 "time": time.time(),
                 "processed_plain_text": self.generated_reply,
                 "detailed_plain_text": self.generated_reply,
-                "user_info": {"user_id": str(global_config.qq), "user_nickname": global_config.BOT_NICKNAME}, # 使用从配置获取的qq号作为user_id和昵称
+                "user_info": {
+                    "user_id": str(global_config.qq),
+                    "user_nickname": global_config.BOT_NICKNAME,
+                },  # 使用从配置获取的qq号作为user_id和昵称
             }
             self.observation_info.update_from_message(bot_message)
-            self.observation_info.clear_unprocessed_messages() # 将机器人消息添加到chat_history
+            self.observation_info.clear_unprocessed_messages()  # 将机器人消息添加到chat_history
 
             self.chat_observer.trigger_update()  # 触发立即更新
             if not await self.chat_observer.wait_for_update():
