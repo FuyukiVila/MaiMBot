@@ -494,6 +494,9 @@ class HeartFChatting:
                     "observed_messages": [],
                 }
 
+        # 初始化变量，确保在任何情况下都有定义
+        observation = None
+        
         try:
             # Access observation via self.sub_hf
             observation = self.sub_hf._get_primary_observation()
@@ -510,7 +513,7 @@ class HeartFChatting:
         # --- (Moved from _replier_work) 1. 思考前使用工具 --- #
         try:
             # Access tool_user directly
-            tool_result = await self.tool_user.use_tool(message_txt=observed_messages_str, sub_heartflow=self.sub_hf)
+            tool_result = await self.tool_user.use_tool(message_txt=observed_messages_str, observation=observation)
             if tool_result.get("used_tools", False):
                 tool_result_info = tool_result.get("structured_info", {})
                 logger.debug(f"{log_prefix}[Planner] 规划前工具结果: {tool_result_info}")
