@@ -78,10 +78,6 @@ class ChatBot:
             groupinfo = message.message_info.group_info
             userinfo = message.message_info.user_info
 
-            if groupinfo and groupinfo.group_id not in global_config.talk_allowed_groups:
-                logger.debug(f"群{groupinfo.group_id}被禁止回复")
-                return
-
             if userinfo.user_id in global_config.ban_user_id:
                 logger.debug(f"用户{userinfo.user_id}被禁止回复")
                 return
@@ -114,8 +110,8 @@ class ChatBot:
                                 group_info=groupinfo,
                             )
                             message.update_chat_stream(chat)
-                            if await self.only_process_chat.process_message(message):
-                                await self._create_pfc_chat(message)
+                            await self.only_process_chat.process_message(message)
+                            await self._create_pfc_chat(message)
                         else:
                             await self.heartflow_processor.process_message(message_data)
                 else:
