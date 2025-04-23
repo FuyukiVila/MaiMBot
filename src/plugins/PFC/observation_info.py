@@ -120,12 +120,9 @@ class ObservationInfo:
     # #spec
     # meta_plan_trigger: bool = False
 
-    def __init__(self):
-        self.last_message_id = None
-        self.chat_observer = None
-
     def __post_init__(self):
         """初始化后创建handler"""
+        self.last_message_id = None
         self.chat_observer = None
         self.handler = ObservationInfoHandler(self)
 
