@@ -151,14 +151,8 @@ class InterestChatting:
             return
 
         currently_above = self.interest_level >= self.trigger_threshold
-        chat_level = self.interest_level >= (self.trigger_threshold / 2)  # 达到聊天阈值
         previous_is_above = self.is_above_threshold
 
-        # 添加一个延迟切换到ABSENT的机制
-        self.below_threshold_time = getattr(self, "below_threshold_time", 0)
-        self.high_interest_level = getattr(self, "high_interest_level", False)
-
-        # 原有的FOCUSED状态转换逻辑保持不变
         if currently_above:
             if not self.is_above_threshold:
                 self.current_reply_probability = self.base_reply_probability
@@ -170,45 +164,18 @@ class InterestChatting:
                 self.current_reply_probability += increase_amount
 
             self.current_reply_probability = min(self.current_reply_probability, self.max_reply_probability)
-            self.below_threshold_time = 0
-            self.high_interest_level = False
-
-        # 新增的CHAT状态转换逻辑
-        elif chat_level:
-            # 如果达到聊天阈值但未达到心流阈值，进入CHAT状态
-            if self.state_change_callback:
-                try:
-                    if await self.state_change_callback(ChatState.CHAT):
-                        interest_logger.debug(f"兴趣达到聊天阈值 ({self.trigger_threshold / 2:.1f}), 进入CHAT状态")
-                except Exception as e:
-                    interest_logger.error(f"Error calling state_change_callback for CHAT: {e}")
-
-            self.below_threshold_time = 0
-            increase_amount = self.probability_increase_rate * time_delta
-            self.current_reply_probability = min(
-                self.base_reply_probability + increase_amount,
-                self.max_reply_probability * 0.7,  # CHAT状态下限制最大概率
-            )
 
         else:
-            # 低于聊天阈值的情况
             if previous_is_above:
-                self.below_threshold_time = time_delta
-            else:
-                self.below_threshold_time += time_delta
-
-            # 只有在持续低于聊天阈值超过30秒时，才切换到ABSENT
-            if self.below_threshold_time > 30:
                 if self.state_change_callback:
                     try:
-                        if await self.state_change_callback(ChatState.ABSENT):
-                            interest_logger.debug(f"兴趣持续低于聊天阈值，切换到ABSENT状态")
+                        await self.state_change_callback(ChatState.ABSENT)
                     except Exception as e:
                         interest_logger.error(f"Error calling state_change_callback for ABSENT: {e}")
 
             if 0 < self.probability_decay_factor < 1:
-                modified_decay_factor = math.pow(self.probability_decay_factor, time_delta * 0.5)
-                self.current_reply_probability *= modified_decay_factor
+                decay_multiplier = math.pow(self.probability_decay_factor, time_delta)
+                self.current_reply_probability *= decay_multiplier
                 if self.current_reply_probability < 1e-6:
                     self.current_reply_probability = 0.0
             elif self.probability_decay_factor <= 0:
@@ -216,11 +183,7 @@ class InterestChatting:
                     interest_logger.warning(f"无效的衰减因子 ({self.probability_decay_factor}). 设置概率为0.")
                     self.current_reply_probability = 0.0
 
-            # 如果之前是高兴趣状态，保持一个较高的基础概率
-            if self.high_interest_level:
-                self.current_reply_probability = max(self.current_reply_probability, self.base_reply_probability * 0.5)
-            else:
-                self.current_reply_probability = max(self.current_reply_probability, 0.0)
+            self.current_reply_probability = max(self.current_reply_probability, 0.0)
 
         self.is_above_threshold = currently_above
 
@@ -309,48 +272,30 @@ class SubHeartflow:
         )
 
     async def set_chat_state(self, new_state: "ChatState"):
-        """更新sub_heartflow的聊天状态，并管理 HeartFChatting 实例
-        返回True表示状态有变更，False表示无变更
-        """
+        """更新sub_heartflow的聊天状态，并管理 HeartFChatting 实例"""
 
         current_state = self.chat_state.chat_status
         if current_state == new_state:
             logger.trace(f"[{self.subheartflow_id}] State already {current_state.value}, no change.")
-            return False  # No change needed
+            return  # No change needed
 
         log_prefix = f"[{chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id}]"
         current_mai_state = self.parent_heartflow.current_state.mai_status
 
         # --- Entering CHAT state ---
         if new_state == ChatState.CHAT:
-            allow_bypass_limit = False
-            current_interest = 0.0
-
-            try:
-                # 获取当前兴趣度
-                current_interest = await self.interest_chatting.get_interest()
-                # 如果兴趣度超过阈值的1.5倍，允许绕过限制
-                allow_bypass_limit = current_interest >= (self.interest_chatting.trigger_threshold * 1.5)
-            except Exception as e:
-                logger.error(f"{log_prefix} 获取兴趣度时出错: {e}")
-
             normal_limit = current_mai_state.get_normal_chat_max_num()
             current_chat_count = self.parent_heartflow.count_subflows_by_state(ChatState.CHAT)
 
-            if current_chat_count >= normal_limit and not allow_bypass_limit:
+            if current_chat_count >= normal_limit:
                 logger.debug(
                     f"{log_prefix} 拒绝从 {current_state.value} 转换到 CHAT。原因：CHAT 状态已达上限 ({normal_limit})。当前数量: {current_chat_count}"
                 )
-                return False  # Block the state transition
+                return  # Block the state transition
             else:
-                if current_chat_count >= normal_limit:
-                    logger.info(
-                        f"{log_prefix} 虽然达到CHAT上限 ({normal_limit})，但由于兴趣度较高 ({current_interest:.2f})，允许转换到 CHAT 状态"
-                    )
-                else:
-                    logger.debug(
-                        f"{log_prefix} 允许从 {current_state.value} 转换到 CHAT (上限: {normal_limit}, 当前: {current_chat_count})"
-                    )
+                logger.debug(
+                    f"{log_prefix} 允许从 {current_state.value} 转换到 CHAT (上限: {normal_limit}, 当前: {current_chat_count})"
+                )
                 # If transitioning out of FOCUSED, shut down HeartFChatting first
                 if current_state == ChatState.FOCUSED and self.heart_fc_instance:
                     logger.info(f"{log_prefix} 从 FOCUSED 转换到 CHAT，正在关闭 HeartFChatting...")
@@ -366,7 +311,7 @@ class SubHeartflow:
                 logger.debug(
                     f"{log_prefix} 拒绝从 {current_state.value} 转换到 FOCUSED。原因：FOCUSED 状态已达上限 ({focused_limit})。当前数量: {current_focused_count}"
                 )
-                return False  # Block the state transition
+                return  # Block the state transition
             else:
                 logger.debug(
                     f"{log_prefix} 允许从 {current_state.value} 转换到 FOCUSED (上限: {focused_limit}, 当前: {current_focused_count})"
@@ -390,12 +335,12 @@ class SubHeartflow:
                                 f"{log_prefix} HeartFChatting 实例初始化失败，状态回滚到 {current_state.value}"
                             )
                             self.heart_fc_instance = None
-                            return False  # Prevent state change if HeartFChatting fails to init
+                            return  # Prevent state change if HeartFChatting fails to init
                     except Exception as e:
                         logger.error(f"{log_prefix} 创建 HeartFChatting 实例时出错: {e}")
                         logger.error(traceback.format_exc())
                         self.heart_fc_instance = None
-                        return False  # Prevent state change on error
+                        return  # Prevent state change on error
 
                 else:
                     logger.warning(f"{log_prefix} 尝试进入 FOCUSED 状态，但 HeartFChatting 实例已存在。")
@@ -410,7 +355,6 @@ class SubHeartflow:
         self.chat_state.chat_status = new_state
         self.last_active_time = time.time()
         logger.info(f"{log_prefix} 聊天状态从 {current_state.value} 变更为 {new_state.value}")
-        return True
 
     async def subheartflow_start_working(self):
         while True:
