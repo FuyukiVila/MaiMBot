@@ -491,9 +491,6 @@ class HeartFChatting:
                     "observed_messages": [],
                 }
 
-        # 初始化变量，确保在任何情况下都有定义
-        observation = None
-
         try:
             # Access observation via self.sub_hf
             observation = self.sub_hf._get_primary_observation()
