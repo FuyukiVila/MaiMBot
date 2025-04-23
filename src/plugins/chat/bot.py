@@ -110,8 +110,8 @@ class ChatBot:
                                 group_info=groupinfo,
                             )
                             message.update_chat_stream(chat)
-                            await self.only_process_chat.process_message(message)
-                            await self._create_pfc_chat(message)
+                            if await self.only_process_chat.process_message(message):
+                                await self._create_pfc_chat(message)
                         else:
                             await self.heartflow_processor.process_message(message_data)
                 else:
