@@ -122,7 +122,6 @@ class ObservationInfo:
 
     def __post_init__(self):
         """初始化后创建handler"""
-        self.last_message_id = None
         self.chat_observer = None
         self.handler = ObservationInfoHandler(self)
 
