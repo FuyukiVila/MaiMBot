@@ -17,7 +17,6 @@ from ..message.message_base import UserInfo
 from src.plugins.chat.chat_stream import chat_manager
 from .pfc_KnowledgeFetcher import KnowledgeFetcher
 from .waiter import Waiter
-from ...config.config import global_config
 
 import traceback
 
