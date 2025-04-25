@@ -17,7 +17,7 @@ class TavilyTool(BaseTool):
     )
 
     name = "tavily_tool"
-    description = """从网络中搜索相关信息"""
+    description = """从网络中搜索相关信息，对于任何你不知道的事情，或者需要最新信息的事情，使用这个工具。"""
 
     parameters = {
         "type": "object",
