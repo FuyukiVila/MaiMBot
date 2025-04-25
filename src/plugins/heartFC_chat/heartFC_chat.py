@@ -1,6 +1,7 @@
 import asyncio
 import time
 import traceback
+import random  # <-- 添加导入
 from typing import List, Optional, Dict, Any, Deque
 from collections import deque
 from src.plugins.chat.message import MessageRecv, BaseMessageInfo, MessageThinking, MessageSending
@@ -23,6 +24,7 @@ from src.heart_flow.observation import Observation
 from src.plugins.heartFC_chat.heartflow_prompt_builder import global_prompt_manager
 import contextlib
 from src.plugins.utils.chat_message_builder import num_new_messages_since
+from src.plugins.heartFC_chat.heartFC_Cycleinfo import CycleInfo
 # --- End import ---
 
 
@@ -146,77 +148,6 @@ class SenderError(HeartFCError):
     pass
 
 
-class CycleInfo:
-    """循环信息记录类"""
-
-    def __init__(self, cycle_id: int):
-        self.cycle_id = cycle_id
-        self.start_time = time.time()
-        self.end_time: Optional[float] = None
-        self.action_taken = False
-        self.action_type = "unknown"
-        self.reasoning = ""
-        self.timers: Dict[str, float] = {}
-        self.thinking_id = ""
-
-        # 添加响应信息相关字段
-        self.response_info: Dict[str, Any] = {
-            "response_text": [],  # 回复的文本列表
-            "emoji_info": "",  # 表情信息
-            "anchor_message_id": "",  # 锚点消息ID
-            "reply_message_ids": [],  # 回复消息ID列表
-            "sub_mind_thinking": "",  # 子思维思考内容
-        }
-
-    def to_dict(self) -> Dict[str, Any]:
-        """将循环信息转换为字典格式"""
-        return {
-            "cycle_id": self.cycle_id,
-            "start_time": self.start_time,
-            "end_time": self.end_time,
-            "action_taken": self.action_taken,
-            "action_type": self.action_type,
-            "reasoning": self.reasoning,
-            "timers": self.timers,
-            "thinking_id": self.thinking_id,
-            "response_info": self.response_info,
-        }
-
-    def complete_cycle(self):
-        """完成循环，记录结束时间"""
-        self.end_time = time.time()
-
-    def set_action_info(self, action_type: str, reasoning: str, action_taken: bool):
-        """设置动作信息"""
-        self.action_type = action_type
-        self.reasoning = reasoning
-        self.action_taken = action_taken
-
-    def set_thinking_id(self, thinking_id: str):
-        """设置思考消息ID"""
-        self.thinking_id = thinking_id
-
-    def set_response_info(
-        self,
-        response_text: Optional[List[str]] = None,
-        emoji_info: Optional[str] = None,
-        anchor_message_id: Optional[str] = None,
-        reply_message_ids: Optional[List[str]] = None,
-        sub_mind_thinking: Optional[str] = None,
-    ):
-        """设置响应信息"""
-        if response_text is not None:
-            self.response_info["response_text"] = response_text
-        if emoji_info is not None:
-            self.response_info["emoji_info"] = emoji_info
-        if anchor_message_id is not None:
-            self.response_info["anchor_message_id"] = anchor_message_id
-        if reply_message_ids is not None:
-            self.response_info["reply_message_ids"] = reply_message_ids
-        if sub_mind_thinking is not None:
-            self.response_info["sub_mind_thinking"] = sub_mind_thinking
-
-
 class HeartFChatting:
     """
     管理一个连续的Plan-Replier-Sender循环
@@ -253,8 +184,7 @@ class HeartFChatting:
 
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.llm_normal,
-            temperature=global_config.llm_normal["temp"],
+            model=global_config.llm_plan,
             max_tokens=1000,
             request_type="action_planning",  # 用于动作规划
         )
@@ -361,7 +291,7 @@ class HeartFChatting:
                     # 记录规划开始时间点
                     planner_start_db_time = time.time()
 
-                    # 执行规划阶段
+                    # 主循环：思考->决策->执行
                     action_taken, thinking_id = await self._think_plan_execute_loop(cycle_timers, planner_start_db_time)
 
                     # 更新循环信息
@@ -441,29 +371,34 @@ class HeartFChatting:
     async def _think_plan_execute_loop(self, cycle_timers: dict, planner_start_db_time: float) -> tuple[bool, str]:
         """执行规划阶段"""
         try:
-            # 获取子思维思考结果
-            current_mind = ""
-            with Timer("思考", cycle_timers):
-                current_mind = await self._get_submind_thinking()
-                # 记录子思维思考内容
-                if self._current_cycle:
-                    self._current_cycle.set_response_info(sub_mind_thinking=current_mind)
+            # think:思考
+            current_mind = await self._get_submind_thinking(cycle_timers)
+            # 记录子思维思考内容
+            if self._current_cycle:
+                self._current_cycle.set_response_info(sub_mind_thinking=current_mind)
 
-            # 执行规划
+            # plan:决策
             with Timer("决策", cycle_timers):
                 planner_result = await self._planner(current_mind, cycle_timers)
 
+            action = planner_result.get("action", "error")
+            reasoning = planner_result.get("reasoning", "未提供理由")
+
+            self._current_cycle.set_action_info(action, reasoning, False)
+
             # 在获取规划结果后检查新消息
             if await self._check_new_messages(planner_start_db_time):
-                # 更新循环信息
-                logger.info(f"{self.log_prefix} 思考到一半，检测到新消息，重新思考")
-                self._current_cycle.set_action_info("new_messages", "检测到新消息", False)
-                return False, "new_messages"
+                if random.random() < 0.3:
+                    logger.info(f"{self.log_prefix} 看到了新消息，麦麦决定重新观察和规划...")
+                    # 重新规划
+                    with Timer("重新决策", cycle_timers):
+                        self._current_cycle.replanned = True
+                        planner_result = await self._planner(current_mind, cycle_timers, is_re_planned=True)
+                    logger.info(f"{self.log_prefix} 重新规划完成.")
 
             # 解析规划结果
             action = planner_result.get("action", "error")
             reasoning = planner_result.get("reasoning", "未提供理由")
-
             # 更新循环信息
             self._current_cycle.set_action_info(action, reasoning, True)
 
@@ -472,8 +407,8 @@ class HeartFChatting:
                 logger.error(f"{self.log_prefix} LLM失败: {reasoning}")
                 return False, ""
 
-            # 根据动作类型执行对应处理
-            with Timer("执行", cycle_timers):
+            # execute:执行
+            with Timer("执行动作", cycle_timers):
                 return await self._handle_action(
                     action, reasoning, planner_result.get("emoji_query", ""), cycle_timers, planner_start_db_time
                 )
@@ -553,7 +488,7 @@ class HeartFChatting:
 
         try:
             # 生成回复
-            with Timer("Replier", cycle_timers):
+            with Timer("生成回复", cycle_timers):
                 reply = await self._replier_work(
                     anchor_message=anchor_message,
                     thinking_id=thinking_id,
@@ -564,13 +499,13 @@ class HeartFChatting:
                 raise ReplierError("回复生成失败")
 
             # 发送消息
-            with Timer("Sender", cycle_timers):
-                await self._sender(
-                    thinking_id=thinking_id,
-                    anchor_message=anchor_message,
-                    response_set=reply,
-                    send_emoji=emoji_query,
-                )
+
+            await self._sender(
+                thinking_id=thinking_id,
+                anchor_message=anchor_message,
+                response_set=reply,
+                send_emoji=emoji_query,
+            )
 
             return True, thinking_id
 
@@ -693,7 +628,7 @@ class HeartFChatting:
             logger.info(f"{log_prefix} Sleep interrupted, loop likely cancelling.")
             raise
 
-    async def _get_submind_thinking(self) -> str:
+    async def _get_submind_thinking(self, cycle_timers: dict) -> str:
         """
         获取子思维的思考结果
 
@@ -701,27 +636,36 @@ class HeartFChatting:
             str: 思考结果，如果思考失败则返回错误信息
         """
         try:
-            observation = self.observations[0]
-            await observation.observe()
-            current_mind, _past_mind = await self.sub_mind.do_thinking_before_reply()
-            return current_mind
+            with Timer("观察", cycle_timers):
+                observation = self.observations[0]
+                await observation.observe()
+
+            # 获取上一个循环的信息
+            last_cycle = self._cycle_history[-1] if self._cycle_history else None
+
+            with Timer("思考", cycle_timers):
+                # 获取上一个循环的动作
+                # 传递上一个循环的信息给 do_thinking_before_reply
+                current_mind, _past_mind = await self.sub_mind.do_thinking_before_reply(last_cycle=last_cycle)
+                return current_mind
         except Exception as e:
             logger.error(f"{self.log_prefix}[SubMind] 思考失败: {e}")
             logger.error(traceback.format_exc())
             return "[思考时出错]"
 
-    async def _planner(self, current_mind: str, cycle_timers: dict) -> Dict[str, Any]:
+    async def _planner(self, current_mind: str, cycle_timers: dict, is_re_planned: bool = False) -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定是否和如何回复。
 
         参数:
             current_mind: 子思维的当前思考结果
         """
-        logger.info(f"{self.log_prefix}[Planner] 开始执行规划器")
+        logger.info(f"{self.log_prefix}[Planner] 开始{'重新' if is_re_planned else ''}执行规划器")
 
         # 获取观察信息
         observation = self.observations[0]
-        # await observation.observe()
+        if is_re_planned:
+            await observation.observe()
         observed_messages = observation.talking_message
         observed_messages_str = observation.talking_message_str
 
@@ -733,33 +677,40 @@ class HeartFChatting:
 
         try:
             # 构建提示词
-            with Timer("构建提示词", cycle_timers):
-                prompt = await self._build_planner_prompt(
-                    observed_messages_str, current_mind, self.sub_mind.structured_info
+
+            if is_re_planned:
+                replan_prompt = await self._build_replan_prompt(
+                    self._current_cycle.action_type, self._current_cycle.reasoning
                 )
-                payload = {
-                    "model": self.planner_llm.model_name,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "tools": self.action_manager.get_planner_tool_definition(),
-                    "tool_choice": {"type": "function", "function": {"name": "decide_reply_action"}},
-                }
+                prompt = replan_prompt
+            else:
+                replan_prompt = ""
+            prompt = await self._build_planner_prompt(
+                observed_messages_str, current_mind, self.sub_mind.structured_info, replan_prompt
+            )
+            payload = {
+                "model": global_config.llm_plan["name"],
+                "messages": [{"role": "user", "content": prompt}],
+                "tools": self.action_manager.get_planner_tool_definition(),
+                "tool_choice": {"type": "function", "function": {"name": "decide_reply_action"}},
+            }
 
             # 执行LLM请求
-            with Timer("LLM回复", cycle_timers):
-                try:
-                    response = await self.planner_llm._execute_request(
-                        endpoint="/chat/completions", payload=payload, prompt=prompt
-                    )
-                except Exception as req_e:
-                    logger.error(f"{self.log_prefix}[Planner] LLM请求执行失败: {req_e}")
-                    return {
-                        "action": "error",
-                        "reasoning": f"LLM请求执行失败: {req_e}",
-                        "emoji_query": "",
-                        "current_mind": current_mind,
-                        "observed_messages": observed_messages,
-                        "llm_error": True,
-                    }
+
+            try:
+                response = await self.planner_llm._execute_request(
+                    endpoint="/chat/completions", payload=payload, prompt=prompt
+                )
+            except Exception as req_e:
+                logger.error(f"{self.log_prefix}[Planner] LLM请求执行失败: {req_e}")
+                return {
+                    "action": "error",
+                    "reasoning": f"LLM请求执行失败: {req_e}",
+                    "emoji_query": "",
+                    "current_mind": current_mind,
+                    "observed_messages": observed_messages,
+                    "llm_error": True,
+                }
 
             # 处理LLM响应
             with Timer("使用工具", cycle_timers):
@@ -903,8 +854,20 @@ class HeartFChatting:
 
         logger.info(f"{self.log_prefix} HeartFChatting关闭完成")
 
+    async def _build_replan_prompt(self, action: str, reasoning: str) -> str:
+        """构建 Replanner LLM 的提示词"""
+        prompt = (await global_prompt_manager.get_prompt_async("replan_prompt")).format(
+            action=action,
+            reasoning=reasoning,
+        )
+        return prompt
+
     async def _build_planner_prompt(
-        self, observed_messages_str: str, current_mind: Optional[str], structured_info: Dict[str, Any]
+        self,
+        observed_messages_str: str,
+        current_mind: Optional[str],
+        structured_info: Dict[str, Any],
+        replan_prompt: str,
     ) -> str:
         """构建 Planner LLM 的提示词"""
 
@@ -916,7 +879,7 @@ class HeartFChatting:
         # 准备聊天内容块
         chat_content_block = ""
         if observed_messages_str:
-            chat_content_block = "观察到的最新聊天内容如下 (最近的消息在最后)：\n---\n"
+            chat_content_block = "观察到的最新聊天内容如下：\n---\n"
             chat_content_block += observed_messages_str
             chat_content_block += "\n---"
         else:
@@ -925,9 +888,9 @@ class HeartFChatting:
         # 准备当前思维块
         current_mind_block = ""
         if current_mind:
-            current_mind_block = f"\n---\n{current_mind}\n---\n\n"
+            current_mind_block = f"{current_mind}"
         else:
-            current_mind_block = " [没有特别的想法] \n\n"
+            current_mind_block = "[没有特别的想法]"
 
         # 获取提示词模板并填充数据
         prompt = (await global_prompt_manager.get_prompt_async("planner_prompt")).format(
@@ -935,6 +898,7 @@ class HeartFChatting:
             structured_info_block=structured_info_block,
             chat_content_block=chat_content_block,
             current_mind_block=current_mind_block,
+            replan=replan_prompt,
         )
 
         return prompt
