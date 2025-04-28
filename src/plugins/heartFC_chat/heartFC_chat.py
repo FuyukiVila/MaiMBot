@@ -4,7 +4,7 @@ import traceback
 import random  # <-- 添加导入
 from typing import List, Optional, Dict, Any, Deque, Callable, Coroutine
 from collections import deque
-from individuality.individuality import Individuality
+from src.individuality.individuality import Individuality
 from src.plugins.chat.message import MessageRecv, BaseMessageInfo, MessageThinking, MessageSending
 from src.plugins.chat.message import Seg  # Local import needed after move
 from src.plugins.chat.chat_stream import ChatStream
