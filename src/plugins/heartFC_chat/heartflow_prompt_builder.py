@@ -49,7 +49,7 @@ def init_prompt():
 
     # Planner提示词 - 优化版
     Prompt(
-        """你的名字是{bot_name}，一名大二女生，正在QQ群聊中。需要基于以下信息决定如何参与对话：
+        """你的名字是{bot_name}，{personality_info}，正在QQ群聊中。需要基于以下信息决定如何参与对话：
 {structured_info_block}
 {chat_content_block}
 你的内心想法：

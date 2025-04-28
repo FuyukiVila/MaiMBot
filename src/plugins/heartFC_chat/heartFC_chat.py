@@ -4,6 +4,7 @@ import traceback
 import random  # <-- 添加导入
 from typing import List, Optional, Dict, Any, Deque, Callable, Coroutine
 from collections import deque
+from individuality.individuality import Individuality
 from src.plugins.chat.message import MessageRecv, BaseMessageInfo, MessageThinking, MessageSending
 from src.plugins.chat.message import Seg  # Local import needed after move
 from src.plugins.chat.chat_stream import ChatStream
@@ -1044,6 +1045,8 @@ class HeartFChatting:
                 # 如果最近的活动循环不是文本回复，或者没有活动循环
                 cycle_info_block = "\n【近期回复历史】\n(最近没有连续文本回复)\n"
 
+            personality_info = Individuality.get_instance().get_prompt(type="personality", x_person=2, level=3)
+            personality_info += Individuality.get_instance().get_prompt(type="identity", x_person=2, level=2)
             # 获取提示词模板并填充数据
             prompt = (await global_prompt_manager.get_prompt_async("planner_prompt")).format(
                 bot_name=global_config.BOT_NICKNAME,
@@ -1052,6 +1055,7 @@ class HeartFChatting:
                 current_mind_block=current_mind_block,
                 replan=replan_prompt,
                 cycle_info_block=cycle_info_block,
+                personality_info=personality_info,
             )
 
             return prompt
