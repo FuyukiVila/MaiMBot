@@ -525,10 +525,10 @@ class BotConfig:
                             if i in pricing_item and i not in cfg_item:
                                 cfg_target[i] = 0
 
-                            if i in stream_item and i not in cfg_item:
+                            elif i in stream_item and i not in cfg_item:
                                 cfg_target[i] = False
 
-                            if i in think_item and i not in cfg_item:
+                            elif i in think_item and i not in cfg_item:
                                 cfg_target[i] = False
 
                             else:
