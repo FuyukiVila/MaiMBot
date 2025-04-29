@@ -223,7 +223,7 @@ class LLMRequest:
             payload["stream"] = stream_mode
 
         # 如果模型是gemini系列，将max_tokens设置为max(max_tokens, 10000)
-        if "gemini" in self.model_name.lower():
+        if "gemini-2.5" in self.model_name.lower():
             current_max_tokens = payload.get("max_tokens", 0)
             payload["max_tokens"] = max(current_max_tokens, 10000)
             payload["reasoning_effort"] = "low" if self.think else "none"
