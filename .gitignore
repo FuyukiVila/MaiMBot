@@ -5,6 +5,7 @@ db/
 NapCat.Framework.Windows.Once/
 log/
 logs/
+tool_call_benchmark.py
 run_ad.bat
 MaiBot-Napcat-Adapter-main
 MaiBot-Napcat-Adapter
