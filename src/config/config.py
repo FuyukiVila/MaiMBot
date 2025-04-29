@@ -502,6 +502,7 @@ class BotConfig:
                         "pri_in": 0,
                         "pri_out": 0,
                         "temp": 0.7,
+                        "think": False,
                     }
 
                     if config.INNER_VERSION in SpecifierSet("<=0.0.0"):
@@ -511,10 +512,13 @@ class BotConfig:
                         stable_item = ["name", "pri_in", "pri_out"]
 
                         stream_item = ["stream"]
+                        think_item = ["think"]
                         if config.INNER_VERSION in SpecifierSet(">=1.0.1"):
                             stable_item.append("stream")
+                            stable_item.append("think")
 
                         pricing_item = ["pri_in", "pri_out"]
+                        
 
                         # 从配置中原始拷贝稳定字段
                         for i in stable_item:
@@ -523,6 +527,9 @@ class BotConfig:
                                 cfg_target[i] = 0
 
                             if i in stream_item and i not in cfg_item:
+                                cfg_target[i] = False
+                            
+                            if i in think_item and i not in cfg_item:
                                 cfg_target[i] = False
 
                             else:

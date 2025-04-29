@@ -96,6 +96,7 @@ class LLMRequest:
         self.params = kwargs
 
         self.stream = model.get("stream", False)
+        self.think = model.get("think", False)
         self.pri_in = model.get("pri_in", 0)
         self.pri_out = model.get("pri_out", 0)
 
@@ -225,8 +226,12 @@ class LLMRequest:
         if "gemini" in self.model_name.lower():
             current_max_tokens = payload.get("max_tokens", 0)
             payload["max_tokens"] = max(current_max_tokens, 10000)
-            payload["reasoning_effort"] = "low"
-        elif payload.get("max_tokens"):
+            payload["reasoning_effort"] = "low" if self.think else "none"
+
+        if "qwen" in self.model_name.lower():
+            payload["enable_thinking"] = True if self.think else False
+
+        if payload.get("max_tokens"):
             payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
 
         return {
