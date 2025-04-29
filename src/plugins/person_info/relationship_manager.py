@@ -4,8 +4,9 @@ import math
 from bson.decimal128 import Decimal128
 from .person_info import person_info_manager
 import time
-import re
-import traceback
+import random
+# import re
+# import traceback
 
 
 logger = get_logger("relation")
@@ -100,36 +101,6 @@ class RelationshipManager:
         # await person_info_manager.update_one_field(person_id, "user_cardname", user_cardname)
         # await person_info_manager.update_one_field(person_id, "user_avatar", user_avatar)
         await person_info_manager.qv_person_name(person_id, user_nickname, user_cardname, user_avatar)
-
-    @staticmethod
-    async def convert_all_person_sign_to_person_name(input_text: str):
-        """将所有人的<platform:user_id:nickname:cardname>格式转换为person_name"""
-        try:
-            # 使用正则表达式匹配<platform:user_id:nickname:cardname>格式
-            all_person = person_info_manager.person_name_list
-
-            pattern = r"<([^:]+):(\d+):([^:]+):([^>]+)>"
-            matches = re.findall(pattern, input_text)
-
-            # 遍历匹配结果，将<platform:user_id:nickname:cardname>替换为person_name
-            result_text = input_text
-            for platform, user_id, nickname, cardname in matches:
-                person_id = person_info_manager.get_person_id(platform, user_id)
-                # 默认使用昵称作为人名
-                person_name = nickname.strip() if nickname.strip() else cardname.strip()
-
-                if person_id in all_person:
-                    if all_person[person_id] is not None:
-                        person_name = all_person[person_id]
-
-                    # print(f"将<{platform}:{user_id}:{nickname}:{cardname}>替换为{person_name}")
-
-                result_text = result_text.replace(f"<{platform}:{user_id}:{nickname}:{cardname}>", person_name)
-
-            return result_text
-        except Exception:
-            logger.error(traceback.format_exc())
-            return input_text
 
     async def calculate_update_relationship_value(self, chat_stream: ChatStream, label: str, stance: str) -> tuple:
         """计算并变更关系值
@@ -309,22 +280,37 @@ class RelationshipManager:
 
     async def build_relationship_info(self, person) -> str:
         person_id = person_info_manager.get_person_id(person[0], person[1])
+        person_name = await person_info_manager.get_value(person_id, "person_name")
         relationship_value = await person_info_manager.get_value(person_id, "relationship_value")
         level_num = self.calculate_level_num(relationship_value)
-        relationship_level = ["厌恶", "冷漠", "一般", "友好", "喜欢", "暧昧"]
-        relation_prompt2_list = [
-            "厌恶回应",
-            "冷淡回复",
-            "保持理性",
-            "愿意回复",
-            "积极回复",
-            "无条件支持",
-        ]
 
-        return (
-            f"你对昵称为'({person[1]}){person[2]}'的用户的态度为{relationship_level[level_num]}，"
-            f"回复态度为{relation_prompt2_list[level_num]}，关系等级为{level_num}。"
-        )
+        if level_num == 0 or level_num == 5:
+            relationship_level = ["厌恶", "冷漠以对", "认识", "友好对待", "喜欢", "暧昧"]
+            relation_prompt2_list = [
+                "忽视的回应",
+                "冷淡回复",
+                "保持理性",
+                "愿意回复",
+                "积极回复",
+                "友善和包容的回复",
+            ]
+            return f"你{relationship_level[level_num]}{person_name}，打算{relation_prompt2_list[level_num]}。\n"
+        elif level_num == 2:
+            return ""
+        else:
+            if random.random() < 0.5:
+                relationship_level = ["厌恶", "冷漠以对", "认识", "友好对待", "喜欢", "暧昧"]
+                relation_prompt2_list = [
+                    "忽视的回应",
+                    "冷淡回复",
+                    "保持理性",
+                    "愿意回复",
+                    "积极回复",
+                    "友善和包容的回复",
+                ]
+                return f"你{relationship_level[level_num]}{person_name}，打算{relation_prompt2_list[level_num]}。\n"
+            else:
+                return ""
 
     @staticmethod
     def calculate_level_num(relationship_value) -> int:
