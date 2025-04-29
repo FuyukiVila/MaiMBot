@@ -518,7 +518,6 @@ class BotConfig:
                             stable_item.append("think")
 
                         pricing_item = ["pri_in", "pri_out"]
-                        
 
                         # 从配置中原始拷贝稳定字段
                         for i in stable_item:
@@ -528,7 +527,7 @@ class BotConfig:
 
                             if i in stream_item and i not in cfg_item:
                                 cfg_target[i] = False
-                            
+
                             if i in think_item and i not in cfg_item:
                                 cfg_target[i] = False
 
