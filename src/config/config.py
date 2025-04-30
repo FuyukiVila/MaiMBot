@@ -273,21 +273,21 @@ class BotConfig:
     enable_pfc_chatting: bool = False  # 是否启用PFC聊天
 
     # 模型配置
-    llm_reasoning: Dict[str, str] = field(default_factory=lambda: {})
-    # llm_reasoning_minor: Dict[str, str] = field(default_factory=lambda: {})
-    llm_normal: Dict[str, str] = field(default_factory=lambda: {})
-    llm_topic_judge: Dict[str, str] = field(default_factory=lambda: {})
-    llm_summary_by_topic: Dict[str, str] = field(default_factory=lambda: {})
-    llm_emotion_judge: Dict[str, str] = field(default_factory=lambda: {})
-    embedding: Dict[str, str] = field(default_factory=lambda: {})
-    vlm: Dict[str, str] = field(default_factory=lambda: {})
-    moderation: Dict[str, str] = field(default_factory=lambda: {})
+    llm_reasoning: Dict[str, object] = field(default_factory=lambda: {})
+    # llm_reasoning_minor: Dict[str, object] = field(default_factory=lambda: {})
+    llm_normal: Dict[str, object] = field(default_factory=lambda: {})
+    llm_topic_judge: Dict[str, object] = field(default_factory=lambda: {})
+    llm_summary_by_topic: Dict[str, object] = field(default_factory=lambda: {})
+    llm_emotion_judge: Dict[str, object] = field(default_factory=lambda: {})
+    embedding: Dict[str, object] = field(default_factory=lambda: {})
+    vlm: Dict[str, object] = field(default_factory=lambda: {})
+    moderation: Dict[str, object] = field(default_factory=lambda: {})
 
-    llm_observation: Dict[str, str] = field(default_factory=lambda: {})
-    llm_sub_heartflow: Dict[str, str] = field(default_factory=lambda: {})
-    llm_heartflow: Dict[str, str] = field(default_factory=lambda: {})
-    llm_tool_use: Dict[str, str] = field(default_factory=lambda: {})
-    llm_plan: Dict[str, str] = field(default_factory=lambda: {})
+    llm_observation: Dict[str, object] = field(default_factory=lambda: {})
+    llm_sub_heartflow: Dict[str, object] = field(default_factory=lambda: {})
+    llm_heartflow: Dict[str, object] = field(default_factory=lambda: {})
+    llm_tool_use: Dict[str, object] = field(default_factory=lambda: {})
+    llm_plan: Dict[str, object] = field(default_factory=lambda: {})
 
     api_urls: Dict[str, str] = field(default_factory=lambda: {})
 
@@ -504,7 +504,7 @@ class BotConfig:
                         "pri_in": 0,
                         "pri_out": 0,
                         "temp": 0.7,
-                        "think": False,
+                        "extra_body": {},
                     }
 
                     if config.INNER_VERSION in SpecifierSet("<=0.0.0"):
@@ -514,10 +514,8 @@ class BotConfig:
                         stable_item = ["name", "pri_in", "pri_out"]
 
                         stream_item = ["stream"]
-                        think_item = ["think"]
                         if config.INNER_VERSION in SpecifierSet(">=1.0.1"):
                             stable_item.append("stream")
-                            stable_item.append("think")
 
                         pricing_item = ["pri_in", "pri_out"]
 
@@ -528,9 +526,6 @@ class BotConfig:
                                 cfg_target[i] = 0
 
                             elif i in stream_item and i not in cfg_item:
-                                cfg_target[i] = False
-
-                            elif i in think_item and i not in cfg_item:
                                 cfg_target[i] = False
 
                             else:
@@ -555,6 +550,12 @@ class BotConfig:
 
                         cfg_target["base_url"] = f"{provider}_BASE_URL"
                         cfg_target["key"] = f"{provider}_KEY"
+                        
+                        extra_body = cfg_item.get("extra_body")
+                        if extra_body:
+                            cfg_target["extra_body"] = extra_body
+                        else:
+                            cfg_target["extra_body"] = {}
 
                     # 如果 列表中的项目在 model_config 中，利用反射来设置对应项目
                     setattr(config, item, cfg_target)

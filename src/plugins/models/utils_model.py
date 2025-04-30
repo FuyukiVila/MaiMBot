@@ -96,7 +96,7 @@ class LLMRequest:
         self.params = kwargs
 
         self.stream = model.get("stream", False)
-        self.think = model.get("think", False)
+        self.extra_body = model.get("extra_body", {})
         self.pri_in = model.get("pri_in", 0)
         self.pri_out = model.get("pri_out", 0)
 
@@ -212,6 +212,8 @@ class LLMRequest:
 
         stream_mode = self.stream
 
+        extra_body = self.extra_body
+
         # 构建请求体
         if image_base64:
             image_base64 = compress_base64_image_by_scale(image_base64)  # 压缩图片
@@ -222,15 +224,8 @@ class LLMRequest:
         if stream_mode:
             payload["stream"] = stream_mode
 
-        # 如果模型是gemini系列，将max_tokens设置为max(max_tokens, 10000)
-        if "gemini-2.5" in self.model_name.lower():
-            current_max_tokens = payload.get("max_tokens", 0)
-            payload["max_tokens"] = max(current_max_tokens, 16000)
-            if "gemini-2.5-flash" in self.model_name.lower():
-                payload["reasoning_effort"] = "low" if self.think else "none"
-
-        elif "qwen" in self.model_name.lower():
-            payload["enable_thinking"] = True if self.think else False
+        if extra_body:
+            payload.update(extra_body)
 
         if payload.get("max_tokens"):
             payload["max_tokens"] = max(payload["max_tokens"], global_config.max_response_length)
