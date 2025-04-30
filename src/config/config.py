@@ -550,7 +550,7 @@ class BotConfig:
 
                         cfg_target["base_url"] = f"{provider}_BASE_URL"
                         cfg_target["key"] = f"{provider}_KEY"
-                        
+
                         extra_body = cfg_item.get("extra_body")
                         if extra_body:
                             cfg_target["extra_body"] = extra_body
