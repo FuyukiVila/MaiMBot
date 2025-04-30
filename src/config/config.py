@@ -276,7 +276,6 @@ class BotConfig:
     llm_normal: Dict[str, object] = field(default_factory=lambda: {})
     llm_topic_judge: Dict[str, object] = field(default_factory=lambda: {})
     llm_summary: Dict[str, object] = field(default_factory=lambda: {})
-    llm_emotion_judge: Dict[str, object] = field(default_factory=lambda: {})
     embedding: Dict[str, object] = field(default_factory=lambda: {})
     vlm: Dict[str, object] = field(default_factory=lambda: {})
     moderation: Dict[str, object] = field(default_factory=lambda: {})
