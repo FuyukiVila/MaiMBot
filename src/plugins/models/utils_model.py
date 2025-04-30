@@ -225,7 +225,7 @@ class LLMRequest:
         # 如果模型是gemini系列，将max_tokens设置为max(max_tokens, 10000)
         if "gemini-2.5" in self.model_name.lower():
             current_max_tokens = payload.get("max_tokens", 0)
-            payload["max_tokens"] = max(current_max_tokens, 10000)
+            payload["max_tokens"] = max(current_max_tokens, 16000)
             if "gemini-2.5-flash" in self.model_name.lower():
                 payload["reasoning_effort"] = "low" if self.think else "none"
 
