@@ -226,9 +226,10 @@ class LLMRequest:
         if "gemini-2.5" in self.model_name.lower():
             current_max_tokens = payload.get("max_tokens", 0)
             payload["max_tokens"] = max(current_max_tokens, 10000)
-            payload["reasoning_effort"] = "low" if self.think else "none"
+            if "gemini-2.5-flash" in self.model_name.lower():
+                payload["reasoning_effort"] = "low" if self.think else "none"
 
-        if "qwen" in self.model_name.lower():
+        elif "qwen" in self.model_name.lower():
             payload["enable_thinking"] = True if self.think else False
 
         if payload.get("max_tokens"):
