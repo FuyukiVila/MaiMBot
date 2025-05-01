@@ -144,6 +144,25 @@ class SenderError(HeartFCError):
     pass
 
 
+async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
+    """处理循环延迟"""
+    cycle_duration = time.monotonic() - cycle_start_time
+
+    try:
+        sleep_duration = 0.0
+        if not action_taken_this_cycle and cycle_duration < 1:
+            sleep_duration = 1 - cycle_duration
+        elif cycle_duration < 0.2:
+            sleep_duration = 0.2
+
+        if sleep_duration > 0:
+            await asyncio.sleep(sleep_duration)
+
+    except asyncio.CancelledError:
+        logger.info(f"{log_prefix} Sleep interrupted, loop likely cancelling.")
+        raise
+
+
 class HeartFChatting:
     """
     管理一个连续的Plan-Replier-Sender循环
@@ -155,7 +174,7 @@ class HeartFChatting:
         self,
         chat_id: str,
         sub_mind: SubMind,
-        observations: Observation,
+        observations: list[Observation],
         on_consecutive_no_reply_callback: Callable[[], Coroutine[None, None, None]],
     ):
         """
@@ -327,7 +346,7 @@ class HeartFChatting:
                     self._current_cycle.timers = cycle_timers
 
                     # 防止循环过快消耗资源
-                    await self._handle_cycle_delay(action_taken, loop_cycle_start_time, self.log_prefix)
+                    await _handle_cycle_delay(action_taken, loop_cycle_start_time, self.log_prefix)
 
                 # 完成当前循环并保存历史
                 self._current_cycle.complete_cycle()
@@ -612,19 +631,18 @@ class HeartFChatting:
         observation = self.observations[0] if self.observations else None
 
         try:
-            dang_qian_deng_dai = 0.0  # 初始化本次等待时间
             with Timer("等待新消息", cycle_timers):
                 # 等待新消息、超时或关闭信号，并获取结果
                 await self._wait_for_new_message(observation, planner_start_db_time, self.log_prefix)
             # 从计时器获取实际等待时间
-            dang_qian_deng_dai = cycle_timers.get("等待新消息", 0.0)
+            current_waiting = cycle_timers.get("等待新消息", 0.0)
 
             if not self._shutting_down:
                 self._lian_xu_bu_hui_fu_ci_shu += 1
-                self._lian_xu_deng_dai_shi_jian += dang_qian_deng_dai  # 累加等待时间
+                self._lian_xu_deng_dai_shi_jian += current_waiting  # 累加等待时间
                 logger.debug(
                     f"{self.log_prefix} 连续不回复计数增加: {self._lian_xu_bu_hui_fu_ci_shu}/{CONSECUTIVE_NO_REPLY_THRESHOLD}, "
-                    f"本次等待: {dang_qian_deng_dai:.2f}秒, 累计等待: {self._lian_xu_deng_dai_shi_jian:.2f}秒"
+                    f"本次等待: {current_waiting:.2f}秒, 累计等待: {self._lian_xu_deng_dai_shi_jian:.2f}秒"
                 )
 
                 # 检查是否同时达到次数和时间阈值
@@ -714,24 +732,6 @@ class HeartFChatting:
                 # 在记录前检查关闭标志
                 if not self._shutting_down:
                     logger.debug(f"{log_prefix} 该次决策耗时: {'; '.join(timer_strings)}")
-
-    async def _handle_cycle_delay(self, action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
-        """处理循环延迟"""
-        cycle_duration = time.monotonic() - cycle_start_time
-
-        try:
-            sleep_duration = 0.0
-            if not action_taken_this_cycle and cycle_duration < 1:
-                sleep_duration = 1 - cycle_duration
-            elif cycle_duration < 0.2:
-                sleep_duration = 0.2
-
-            if sleep_duration > 0:
-                await asyncio.sleep(sleep_duration)
-
-        except asyncio.CancelledError:
-            logger.info(f"{log_prefix} Sleep interrupted, loop likely cancelling.")
-            raise
 
     async def _get_submind_thinking(self, cycle_timers: dict) -> str:
         """
