@@ -17,7 +17,7 @@ from ..models.utils_model import LLMRequest
 from src.common.logger_manager import get_logger
 from rich.traceback import install
 
-install(show_locals=True, extra_lines=3)
+install(extra_lines=3)
 
 logger = get_logger("emoji")
 
@@ -289,7 +289,6 @@ def _to_emoji_objects(data):
         except Exception as e:
             logger.error(f"[加载错误] 处理数据库记录时出错 ({full_path}): {str(e)}")
             load_errors += 1
-        return emoji_objects, load_errors
     return emoji_objects, load_errors
 
 
