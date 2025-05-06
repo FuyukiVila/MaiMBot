@@ -236,7 +236,7 @@ class LLMRequest:
         api_url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
         stream_mode = self.stream
-        
+
         extra_body = self.extra_body
 
         # 构建请求体
@@ -247,7 +247,7 @@ class LLMRequest:
 
         if stream_mode:
             payload["stream"] = stream_mode
-        
+
         if extra_body:
             payload.update(extra_body)
 
