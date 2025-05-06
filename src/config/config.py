@@ -542,6 +542,13 @@ class BotConfig:
                             # 如果没有temp参数，就删除默认值
                             cfg_target.pop("temp", None)
 
+                        if "extra_body" in cfg_item:
+                            if not isinstance(cfg_item["extra_body"], dict):
+                                logger.error(f"{item} 中的 extra_body 字段不是字典，请检查")
+                                raise TypeError(f"{item} 中的 extra_body 字段不是字典，请检查")
+                            else:
+                                cfg_target["extra_body"] = cfg_item["extra_body"]
+
                         provider = cfg_item.get("provider")
                         if provider is None:
                             logger.error(f"provider 字段在模型配置 {item} 中不存在，请检查")
@@ -549,12 +556,6 @@ class BotConfig:
 
                         cfg_target["base_url"] = f"{provider}_BASE_URL"
                         cfg_target["key"] = f"{provider}_KEY"
-
-                        extra_body = cfg_item.get("extra_body")
-                        if extra_body:
-                            cfg_target["extra_body"] = extra_body
-                        else:
-                            cfg_target["extra_body"] = {}
 
                     # 如果 列表中的项目在 model_config 中，利用反射来设置对应项目
                     setattr(config, item, cfg_target)

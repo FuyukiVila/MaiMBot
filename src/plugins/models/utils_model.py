@@ -121,9 +121,9 @@ class LLMRequest:
         self.params = kwargs
 
         self.stream = model.get("stream", False)
-        self.extra_body = model.get("extra_body", {})
         self.pri_in = model.get("pri_in", 0)
         self.pri_out = model.get("pri_out", 0)
+        self.extra_body = model.get("extra_body", {})
 
         # 获取数据库实例
         self._init_database()
