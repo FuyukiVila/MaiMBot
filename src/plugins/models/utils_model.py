@@ -123,6 +123,7 @@ class LLMRequest:
         self.stream = model.get("stream", False)
         self.pri_in = model.get("pri_in", 0)
         self.pri_out = model.get("pri_out", 0)
+        self.extra_body = model.get("extra_body", {})
 
         # 获取数据库实例
         self._init_database()
@@ -235,6 +236,8 @@ class LLMRequest:
         api_url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
         stream_mode = self.stream
+        
+        extra_body = self.extra_body
 
         # 构建请求体
         if image_base64:
@@ -244,6 +247,9 @@ class LLMRequest:
 
         if stream_mode:
             payload["stream"] = stream_mode
+        
+        if extra_body:
+            payload.update(extra_body)
 
         return {
             "policy": policy,
