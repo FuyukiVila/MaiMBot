@@ -37,11 +37,16 @@ class TavilyTool(BaseTool):
     async def execute(self, function_args, message_txt=""):
         """执行Tavily搜索"""
         try:
-            response = await self._client.get_search_context(
+            response = await self._client.search(
                 query=function_args["query"],
                 max_results=function_args.get("max_results", 5),
+                search_depth="advanced",
+                include_answer="advanced",
             )
-            response = response.encode("utf-8").decode("unicode_escape").replace("\u200b", "")
+            answer = response.get("answer", None)
+            if not answer:
+                return {"name": self.name, "content": "没有找到相关结果"}
+            logger.info(f"搜索结果: {answer}")
             # 结果添加到data/lpmm_raw_data/{query}.txt
             file_path = "data/lpmm_raw_data"
             file_name = function_args["query"].replace(" ", "-") + ".txt"
@@ -52,14 +57,14 @@ class TavilyTool(BaseTool):
             try:
                 if os.path.exists(file_path):
                     with open(file_path, "a", encoding="utf-8") as file:
-                        file.write(response)
+                        file.write(answer)
                 else:
                     with open(file_path, "w", encoding="utf-8") as file:
-                        file.write(response)
+                        file.write(answer)
             except Exception as e:
                 logger.error(f"文件写入失败: {e}")
                 pass
-            return {"name": self.name, "content": response}
+            return {"name": self.name, "content": answer}
         except Exception as e:
             logger.error(f"搜索失败: {e}")
             return {"name": self.name, "content": "搜索失败, 没有结果返回"}
