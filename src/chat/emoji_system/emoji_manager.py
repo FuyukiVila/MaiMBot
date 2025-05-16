@@ -389,6 +389,7 @@ class EmojiManager:
             raise RuntimeError("数据库连接失败")
         _ensure_emoji_dir()
         Emoji.create_table(safe=True)  # Ensures table exists
+        self._initialized = True
 
     def _ensure_db(self) -> None:
         """确保数据库已初始化"""
