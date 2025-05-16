@@ -250,7 +250,7 @@ class LLMRequest:
             payload.update(extra_body)
 
         if payload.get("max_tokens"):
-            payload["max_tokens"] = max(payload["max_tokens"], global_config.model_max_output_length)
+            payload["max_tokens"] = max(payload["max_tokens"], global_config.model.model_max_output_length)
 
         return {
             "policy": policy,
