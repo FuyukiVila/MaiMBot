@@ -1,4 +1,4 @@
-from .mode_dynamic import DynamicWillingManager
+from .willing_manager import BaseWillingManager
 
 
 class CustomWillingManager(BaseWillingManager):
