@@ -26,8 +26,9 @@ class ChattingInfoProcessor(BaseProcessor):
     def __init__(self):
         """初始化观察处理器"""
         super().__init__()
-        self.llm_summary = LLMRequest(
-            model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
+        # TODO: API-Adapter修改标记
+        self.model_summary = LLMRequest(
+            model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 
     async def process_info(
@@ -54,6 +55,8 @@ class ChattingInfoProcessor(BaseProcessor):
             for obs in observations:
                 # print(f"obs: {obs}")
                 if isinstance(obs, ChattingObservation):
+                    # print("1111111111111111111111读取111111111111111")
+
                     obs_info = ObsInfo()
 
                     await self.chat_compress(obs)
@@ -91,7 +94,7 @@ class ChattingInfoProcessor(BaseProcessor):
     async def chat_compress(self, obs: ChattingObservation):
         if obs.compressor_prompt:
             try:
-                summary_result, _, _ = await self.llm_summary.generate_response(obs.compressor_prompt)
+                summary_result, _, _ = await self.model_summary.generate_response(obs.compressor_prompt)
                 summary = "没有主题的闲聊"  # 默认值
                 if summary_result:  # 确保结果不为空
                     summary = summary_result
@@ -108,12 +111,12 @@ class ChattingInfoProcessor(BaseProcessor):
                 "created_at": datetime.now().timestamp(),
             }
 
-            obs.mid_memorys.append(mid_memory)
-            if len(obs.mid_memorys) > obs.max_mid_memory_len:
-                obs.mid_memorys.pop(0)  # 移除最旧的
+            obs.mid_memories.append(mid_memory)
+            if len(obs.mid_memories) > obs.max_mid_memory_len:
+                obs.mid_memories.pop(0)  # 移除最旧的
 
             mid_memory_str = "之前聊天的内容概述是：\n"
-            for mid_memory_item in obs.mid_memorys:  # 重命名循环变量以示区分
+            for mid_memory_item in obs.mid_memories:  # 重命名循环变量以示区分
                 time_diff = int((datetime.now().timestamp() - mid_memory_item["created_at"]) / 60)
                 mid_memory_str += (
                     f"距离现在{time_diff}分钟前(聊天记录id:{mid_memory_item['id']})：{mid_memory_item['theme']}\n"
