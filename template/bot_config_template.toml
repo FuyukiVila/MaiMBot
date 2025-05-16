@@ -184,11 +184,11 @@ pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与
 # stream = <true|false> : 用于指定模型是否是使用流式输出
 # 如果不指定，则该项是 False
 
-[model]
-model_max_output_length = 800 # 模型单次返回的最大token数
-
 # extra_body = { key1=value1, key2=value2 } : 用于指定模型请求体的额外参数
 # 具体字段内容请参考模型的api文档，如果你不理解这是什么意思，请不要随意修改
+
+[model]
+model_max_output_length = 800 # 模型单次返回的最大token数
 
 #这个模型必须是推理模型
 [model.reasoning] # 一般聊天模式的推理回复模型
