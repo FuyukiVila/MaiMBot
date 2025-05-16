@@ -120,7 +120,7 @@ class ChatBot:
                     if global_config.experimental.enable_friend_chat:
                         logger.trace("私聊模式已启用")
                         # 是否进入PFC
-                        if global_config.enable_pfc_chatting:
+                        if global_config.experimental.pfc_chatting:
                             logger.trace("进入PFC私聊处理流程")
                             userinfo = message.message_info.user_info
                             messageinfo = message.message_info

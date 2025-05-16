@@ -1,3 +1,4 @@
+import re
 import time
 import traceback
 from ..memory_system.Hippocampus import HippocampusManager
@@ -133,7 +134,8 @@ def _check_ban_regex(text: str, chat, userinfo) -> bool:
         bool: 是否匹配过滤正则
     """
     for pattern in global_config.chat.ban_msgs_regex:
-        if pattern.search(text):
+        pattern_compiled = re.compile(pattern)
+        if pattern_compiled.search(text):
             chat_name = chat.group_info.group_name if chat.group_info else "私聊"
             logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
             logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
