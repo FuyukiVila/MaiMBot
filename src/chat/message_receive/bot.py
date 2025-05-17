@@ -79,9 +79,9 @@ class ChatBot:
             user_info = message.message_info.user_info
 
             # 用户黑名单拦截
-            if user_info.user_id in global_config.chat_target.ban_user_id:
-                logger.debug(f"用户{user_info.user_id}被禁止回复")
-                return
+            # if userinfo.user_id in global_config.chat_target.ban_user_id:
+            #     logger.debug(f"用户{userinfo.user_id}被禁止回复")
+            #     return
 
             # if groupinfo is None:
             #     logger.trace("检测到私聊消息，检查")
@@ -93,9 +93,9 @@ class ChatBot:
             # 群聊黑名单拦截
             # print(groupinfo.group_id)
             # print(global_config.chat_target.talk_allowed_groups)
-            if group_info is not None and group_info.group_id not in global_config.chat_target.talk_allowed_groups:
-                logger.debug(f"群{group_info.group_id}被禁止回复")
-                return
+            # if groupinfo is not None and groupinfo.group_id not in global_config.chat_target.talk_allowed_groups:
+            #     logger.debug(f"群{groupinfo.group_id}被禁止回复")
+            #     return
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:
