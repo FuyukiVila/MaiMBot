@@ -284,11 +284,11 @@ class BotConfig:
     vlm: Dict[str, str] = field(default_factory=lambda: {})
     moderation: Dict[str, str] = field(default_factory=lambda: {})
 
-    llm_observation: Dict[str, object] = field(default_factory=lambda: {})
-    llm_sub_heartflow: Dict[str, object] = field(default_factory=lambda: {})
-    llm_heartflow: Dict[str, object] = field(default_factory=lambda: {})
-    llm_tool_use: Dict[str, object] = field(default_factory=lambda: {})
-    llm_plan: Dict[str, object] = field(default_factory=lambda: {})
+    llm_observation: Dict[str, str] = field(default_factory=lambda: {})
+    llm_sub_heartflow: Dict[str, str] = field(default_factory=lambda: {})
+    llm_heartflow: Dict[str, str] = field(default_factory=lambda: {})
+    llm_tool_use: Dict[str, str] = field(default_factory=lambda: {})
+    llm_plan: Dict[str, str] = field(default_factory=lambda: {})
 
     api_urls: Dict[str, str] = field(default_factory=lambda: {})
 
