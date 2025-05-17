@@ -150,7 +150,7 @@ class ImageManager:
                         img_obj.save()
                     except Images.DoesNotExist:
                         Images.create(
-                            hash=image_hash,
+                            emoji_hash=image_hash,
                             path=file_path,
                             type="emoji",
                             description=description,
@@ -223,7 +223,7 @@ class ImageManager:
                         img_obj.save()
                     except Images.DoesNotExist:
                         Images.create(
-                            hash=image_hash,
+                            emoji_hash=image_hash,
                             path=file_path,
                             type="image",
                             description=description,
