@@ -83,7 +83,7 @@ class ImageManager:
             current_timestamp = time.time()
             defaults = {"description": description, "timestamp": current_timestamp}
             desc_obj, created = ImageDescriptions.get_or_create(
-                hash=image_hash, type=description_type, defaults=defaults
+                image_description_hash=image_hash, type=description_type, defaults=defaults
             )
             if not created:  # 如果记录已存在，则更新
                 desc_obj.description = description
@@ -128,7 +128,7 @@ class ImageManager:
                 return f"[表情包，含义看起来是：{cached_description}]"
 
             # 根据配置决定是否保存图片
-            if global_config.emoji.save_emoji:
+            if global_config.emoji.steal_emoji:
                 # 生成文件名和路径
                 current_timestamp = time.time()
                 filename = f"{int(current_timestamp)}_{image_hash[:8]}.{image_format}"
