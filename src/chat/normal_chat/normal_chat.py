@@ -23,11 +23,11 @@ from src.chat.emoji_system.emoji_manager import emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
 from src.config.config import global_config
 
-logger = get_logger("chat")
+logger = get_logger("normal_chat")
 
 
 class NormalChat:
-    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None):
+    def __init__(self, chat_stream: ChatStream, interest_dict: dict = {}):
         """初始化 NormalChat 实例。只进行同步操作。"""
 
         # Basic info from chat_stream (sync)
@@ -201,13 +201,10 @@ class NormalChat:
                 logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
                 break
 
-            # 获取待处理消息列表
-            if self.interest_dict:
-                items_to_process = list(self.interest_dict.items())
-                if not items_to_process:
-                    continue
-            else:
-                return
+
+            items_to_process = list(self.interest_dict.items())
+            if not items_to_process:
+                continue
 
             # 处理每条兴趣消息
             for msg_id, (message, interest_value, is_mentioned) in items_to_process:
@@ -486,7 +483,7 @@ class NormalChat:
         try:
             if exc := task.exception():
                 logger.error(f"[{self.stream_name}] 任务异常: {exc}")
-                logger.error(traceback.format_exc())
+                traceback.print_exc()
         except asyncio.CancelledError:
             logger.debug(f"[{self.stream_name}] 任务已取消")
         except Exception as e:
@@ -527,4 +524,4 @@ class NormalChat:
                     logger.info(f"[{self.stream_name}] 清理了 {len(thinking_messages)} 条未处理的思考消息。")
         except Exception as e:
             logger.error(f"[{self.stream_name}] 清理思考消息时出错: {e}")
-            logger.error(traceback.format_exc())
+            traceback.print_exc()
