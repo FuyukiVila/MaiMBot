@@ -6,7 +6,6 @@ from ...config.config import global_config
 from ..message_receive.message import MessageRecv
 from ..message_receive.storage import MessageStorage
 from ..utils.utils import is_mentioned_bot_in_message
-from maim_message import Seg
 from src.chat.heart_flow.heartflow import heartflow
 from src.common.logger_manager import get_logger
 from ..message_receive.chat_stream import chat_manager
@@ -80,26 +79,26 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     return interested_rate, is_mentioned
 
 
-def _get_message_type(message: MessageRecv) -> str:
-    """获取消息类型
+# def _get_message_type(message: MessageRecv) -> str:
+#     """获取消息类型
 
-    Args:
-        message: 消息对象
+#     Args:
+#         message: 消息对象
 
-    Returns:
-        str: 消息类型
-    """
-    if message.message_segment.type != "seglist":
-        return message.message_segment.type
+#     Returns:
+#         str: 消息类型
+#     """
+#     if message.message_segment.type != "seglist":
+#         return message.message_segment.type
 
-    if (
-        isinstance(message.message_segment.data, list)
-        and all(isinstance(x, Seg) for x in message.message_segment.data)
-        and len(message.message_segment.data) == 1
-    ):
-        return message.message_segment.data[0].type
+#     if (
+#         isinstance(message.message_segment.data, list)
+#         and all(isinstance(x, Seg) for x in message.message_segment.data)
+#         and len(message.message_segment.data) == 1
+#     ):
+#         return message.message_segment.data[0].type
 
-    return "seglist"
+#     return "seglist"
 
 
 def _check_ban_words(text: str, chat, userinfo) -> bool:
@@ -113,7 +112,7 @@ def _check_ban_words(text: str, chat, userinfo) -> bool:
     Returns:
         bool: 是否包含过滤词
     """
-    for word in global_config.chat.ban_words:
+    for word in global_config.message_receive.ban_words:
         if word in text:
             chat_name = chat.group_info.group_name if chat.group_info else "私聊"
             logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
@@ -133,9 +132,14 @@ def _check_ban_regex(text: str, chat, userinfo) -> bool:
     Returns:
         bool: 是否匹配过滤正则
     """
+<<<<<<< HEAD:src/chat/focus_chat/heartflow_processor.py
     for pattern in global_config.chat.ban_msgs_regex:
         pattern_compiled = re.compile(pattern)
         if pattern_compiled.search(text):
+=======
+    for pattern in global_config.message_receive.ban_msgs_regex:
+        if pattern.search(text):
+>>>>>>> upstream/dev:src/chat/focus_chat/heartflow_message_revceiver.py
             chat_name = chat.group_info.group_name if chat.group_info else "私聊"
             logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
             logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
@@ -143,7 +147,7 @@ def _check_ban_regex(text: str, chat, userinfo) -> bool:
     return False
 
 
-class HeartFCProcessor:
+class HeartFCMessageReceiver:
     """心流处理器，负责处理接收到的消息并计算兴趣度"""
 
     def __init__(self):
