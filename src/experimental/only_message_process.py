@@ -3,7 +3,6 @@ from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from datetime import datetime
-import re
 
 logger = get_logger("pfc")
 
@@ -30,8 +29,7 @@ class MessageProcessor:
     def _check_ban_regex(text: str, chat, userinfo) -> bool:
         """检查消息是否匹配过滤正则表达式"""
         for pattern in global_config.chat.ban_msgs_regex:
-            pattern_compiled = re.compile(pattern)
-            if pattern_compiled.search(text):
+            if pattern.search(text):
                 logger.info(
                     f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
                 )
