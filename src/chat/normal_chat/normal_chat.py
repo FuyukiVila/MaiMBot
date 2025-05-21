@@ -1,5 +1,4 @@
 import asyncio
-import re
 import statistics  # 导入 statistics 模块
 import time
 import traceback
@@ -441,13 +440,12 @@ class NormalChat:
         """检查消息是否匹配过滤正则表达式"""
         stream_name = chat_manager.get_stream_name(chat.stream_id) or chat.stream_id
         for pattern in global_config.chat.ban_msgs_regex:
-            pattern_compiled = re.compile(pattern)
-            if pattern_compiled.search(text):
+            if pattern.search(text):
                 logger.info(
                     f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
                     f"{userinfo.user_nickname}:{text}"
                 )
-                logger.info(f"[{stream_name}][正则表达式过滤] 消息匹配到 '{pattern}'，filtered")
+                logger.info(f"[{stream_name}][正则表达式过滤] 消息匹配到 '{pattern.pattern}'，filtered")
                 return True
         return False
 
