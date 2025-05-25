@@ -1,4 +1,6 @@
+from ast import pattern
 import asyncio
+import re
 import statistics  # 导入 statistics 模块
 import time
 import traceback
@@ -441,14 +443,19 @@ class NormalChat:
     def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
         """检查消息是否匹配过滤正则表达式"""
         stream_name = chat_manager.get_stream_name(chat.stream_id) or chat.stream_id
-        for pattern in global_config.chat.ban_msgs_regex:
-            if pattern.search(text):
-                logger.info(
-                    f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
-                    f"{userinfo.user_nickname}:{text}"
-                )
-                logger.info(f"[{stream_name}][正则表达式过滤] 消息匹配到 '{pattern.pattern}'，filtered")
-                return True
+        for pattern_str in global_config.chat.ban_msgs_regex:
+            try:
+                pattern = re.compile(pattern_str)
+                if pattern.search(text):
+                    logger.info(
+                        f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
+                        f"{userinfo.user_nickname}:{text}"
+                    )
+                    logger.info(f"[{stream_name}][正则表达式过滤] 消息匹配到 '{pattern.pattern}'，filtered")
+                    return True
+            except re.error as e:
+                    logger.warning(f"无效的正则表达式模式 '{pattern_str}': {e}")
+                    continue
         return False
 
     # 改为实例方法, 移除 chat 参数

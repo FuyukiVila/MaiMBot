@@ -1,3 +1,5 @@
+from ast import pattern
+import re
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
@@ -28,13 +30,18 @@ class MessageProcessor:
     @staticmethod
     def _check_ban_regex(text: str, chat, userinfo) -> bool:
         """检查消息是否匹配过滤正则表达式"""
-        for pattern in global_config.chat.ban_msgs_regex:
-            if pattern.search(text):
-                logger.info(
-                    f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
-                )
-                logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
-                return True
+        for pattern_str in global_config.chat.ban_msgs_regex:
+            try:
+                pattern = re.compile(pattern_str)
+                if pattern.search(text):
+                    logger.info(
+                        f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
+                    )
+                    logger.info(f"[正则表达式过滤]消息匹配到{pattern.pattern}，filtered")
+                    return True
+            except re.error as e:
+                    logger.warning(f"无效的正则表达式模式 '{pattern_str}': {e}")
+                    continue
         return False
 
     async def process_message(self, message: MessageRecv) -> None:

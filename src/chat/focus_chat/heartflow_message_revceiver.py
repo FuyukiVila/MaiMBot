@@ -1,5 +1,6 @@
 import time
 import traceback
+import re
 from ..memory_system.Hippocampus import HippocampusManager
 from ...config.config import global_config
 from ..message_receive.message import MessageRecv
@@ -131,12 +132,17 @@ def _check_ban_regex(text: str, chat, userinfo) -> bool:
     Returns:
         bool: 是否匹配过滤正则
     """
-    for pattern in global_config.message_receive.ban_msgs_regex:
-        if pattern.search(text):
-            chat_name = chat.group_info.group_name if chat.group_info else "私聊"
-            logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
-            logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
-            return True
+    for pattern_str in global_config.message_receive.ban_msgs_regex:
+        try:
+            # 编译正则表达式
+            pattern = re.compile(pattern_str)
+            if pattern.search(text):
+                chat_name = chat.group_info.group_name if chat.group_info else "私聊"
+                logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
+                return True
+        except re.error as e:
+            logger.warning(f"无效的正则表达式模式 '{pattern_str}': {e}")
+            continue
     return False
 
 
