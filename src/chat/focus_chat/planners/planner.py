@@ -37,11 +37,14 @@ def init_prompt():
 {cycle_info_block}
 
 请综合分析聊天内容和你看到的新消息，参考聊天规划，选择合适的action:
+注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
 
 你必须从上面列出的可用action中选择一个，并说明原因。
 你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
+
+{moderation_prompt}
 
 请你以下面格式输出你选择的action：
 {{
@@ -74,9 +77,9 @@ class ActionPlanner:
         self.log_prefix = log_prefix
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.model.plan,
+            model=global_config.model.focus_planner,
             max_tokens=1000,
-            request_type="action_planning",  # 用于动作规划
+            request_type="focus_planner",  # 用于动作规划
         )
 
         self.action_manager = action_manager
@@ -104,6 +107,7 @@ class ActionPlanner:
                     add_actions = info.get_add_actions()
                     remove_actions = info.get_remove_actions()
                     reason = info.get_reason()
+                    print(f"{self.log_prefix} 动作变更: {add_actions} {remove_actions} {reason}")
 
                     # 处理动作的增加
                     for action_name in add_actions:
@@ -135,18 +139,25 @@ class ActionPlanner:
                 elif isinstance(info, SelfInfo):
                     self_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
-                    _structured_info = info.get_data()
+                    structured_info = info.get_processed_info()
+                    # print(f"structured_info: {structured_info}")
                 elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
                     extra_info.append(info.get_processed_info())
 
             # 获取当前可用的动作
             current_available_actions = self.action_manager.get_using_actions()
 
-            # 如果没有可用动作，直接返回no_reply
-            if not current_available_actions:
-                logger.warning(f"{self.log_prefix}没有可用的动作，将使用no_reply")
+            # 如果没有可用动作或只有no_reply动作，直接返回no_reply
+            if not current_available_actions or (
+                len(current_available_actions) == 1 and "no_reply" in current_available_actions
+            ):
                 action = "no_reply"
-                reasoning = "没有可用的动作"
+                reasoning = "没有可用的动作" if not current_available_actions else "只有no_reply动作可用，跳过规划"
+                logger.info(f"{self.log_prefix}{reasoning}")
+                self.action_manager.restore_actions()
+                logger.debug(
+                    f"{self.log_prefix}沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+                )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
                     "current_mind": current_mind,
@@ -160,7 +171,7 @@ class ActionPlanner:
                 chat_target_info=None,
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
                 current_mind=current_mind,  # <-- Pass argument
-                # structured_info=structured_info,  # <-- Pass SubMind info
+                structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
                 cycle_info=cycle_info,  # <-- Pass cycle info
                 extra_info=extra_info,
@@ -169,8 +180,9 @@ class ActionPlanner:
             # --- 调用 LLM (普通文本生成) ---
             llm_content = None
             try:
-                llm_content, _, _ = await self.planner_llm.generate_response(prompt=prompt)
+                llm_content, reasoning_content, _ = await self.planner_llm.generate_response(prompt=prompt)
                 logger.debug(f"{self.log_prefix}[Planner] LLM 原始 JSON 响应 (预期): {llm_content}")
+                logger.debug(f"{self.log_prefix}[Planner] LLM 原始理由 响应 (预期): {reasoning_content}")
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}[Planner] LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
@@ -226,10 +238,10 @@ class ActionPlanner:
             f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
         )
 
-        # 恢复原始动作集
+        # 恢复到默认动作集
         self.action_manager.restore_actions()
         logger.debug(
-            f"{self.log_prefix}恢复了原始动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+            f"{self.log_prefix}规划后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
         )
 
         action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}
@@ -249,6 +261,7 @@ class ActionPlanner:
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
         current_mind: Optional[str],
+        structured_info: Optional[str],
         current_available_actions: Dict[str, ActionInfo],
         cycle_info: Optional[str],
         extra_info: list[str],
@@ -306,7 +319,13 @@ class ActionPlanner:
                 action_options_block += using_action_prompt
 
             extra_info_block = "\n".join(extra_info)
-            extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+            extra_info_block += f"\n{structured_info}"
+            if extra_info or structured_info:
+                extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+            else:
+                extra_info_block = ""
+
+            moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
@@ -318,7 +337,9 @@ class ActionPlanner:
                 mind_info_block=mind_info_block,
                 cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
+                # action_available_block=action_available_block,
                 extra_info_block=extra_info_block,
+                moderation_prompt=moderation_prompt_block,
             )
             return prompt
 
