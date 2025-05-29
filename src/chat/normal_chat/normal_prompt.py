@@ -1,4 +1,3 @@
-import re
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
 from src.individuality.individuality import individuality
@@ -192,19 +191,14 @@ class PromptBuilder:
                     logger.info(f"检测到以下关键词之一：{rule.keywords}，触发反应：{rule.reaction}")
                     keywords_reaction_prompt += f"{rule.reaction}，"
                 else:
-                    for pattern_str in rule.regex:
-                        try:
-                            pattern = re.compile(pattern_str)
-                            if result := pattern.search(message_txt):
-                                reaction = rule.reaction
-                                for name, content in result.groupdict().items():
-                                    reaction = reaction.replace(f"[{name}]", content)
-                                logger.info(f"匹配到以下正则表达式：{pattern.pattern}，触发反应：{reaction}")
-                                keywords_reaction_prompt += reaction + "，"
-                                break
-                        except re.error as e:
-                            logger.warning(f"无效的正则表达式模式 '{pattern_str}': {e}")
-                            continue
+                    for pattern in rule.regex:
+                        if result := pattern.search(message_txt):
+                            reaction = rule.reaction
+                            for name, content in result.groupdict().items():
+                                reaction = reaction.replace(f"[{name}]", content)
+                            logger.info(f"匹配到以下正则表达式：{pattern}，触发反应：{reaction}")
+                            keywords_reaction_prompt += reaction + "，"
+                            break
 
         # 中文高手(新加的好玩功能)
         prompt_ger = ""

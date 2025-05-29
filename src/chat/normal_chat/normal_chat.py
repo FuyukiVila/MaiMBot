@@ -1,4 +1,3 @@
-from ast import pattern
 import asyncio
 import time
 import traceback
