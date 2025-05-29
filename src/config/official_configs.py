@@ -60,6 +60,12 @@ class ChatConfig(ConfigBase):
     chat_mode: str = "normal"
     """聊天模式"""
 
+    auto_focus_threshold: float = 1.0
+    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+
+    exit_focus_threshold: float = 1.0
+    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
+
 
 @dataclass
 class MessageReceiveConfig(ConfigBase):
@@ -85,7 +91,7 @@ class NormalChatConfig(ConfigBase):
     max_context_size: int = 15
     """上下文长度"""
 
-    message_buffer: bool = True
+    message_buffer: bool = False
     """消息缓冲器"""
 
     emoji_chance: float = 0.2
@@ -96,6 +102,9 @@ class NormalChatConfig(ConfigBase):
 
     willing_mode: str = "classical"
     """意愿模式"""
+
+    talk_frequency: float = 1
+    """回复频率阈值"""
 
     response_willing_amplifier: float = 1.0
     """回复意愿放大系数"""
@@ -122,12 +131,6 @@ class NormalChatConfig(ConfigBase):
 @dataclass
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
-
-    auto_focus_threshold: float = 1.0
-    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
-
-    exit_focus_threshold: float = 1.0
-    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
@@ -340,6 +343,9 @@ class TelemetryConfig(ConfigBase):
 @dataclass
 class ExperimentalConfig(ConfigBase):
     """实验功能配置类"""
+
+    debug_show_chat_mode: bool = False
+    """是否在回复后显示当前聊天模式"""
 
     enable_friend_chat: bool = False
     """是否启用好友聊天"""

@@ -1,19 +1,21 @@
-import time
-import traceback
-import re
-from ..memory_system.Hippocampus import HippocampusManager
-from ...config.config import global_config
-from ..message_receive.message import MessageRecv
-from ..message_receive.storage import MessageStorage
-from ..utils.utils import is_mentioned_bot_in_message
+from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.config.config import global_config
+from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
+from src.chat.message_receive.chat_stream import chat_manager, ChatStream
+from src.chat.utils.utils import is_mentioned_bot_in_message
+from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
-from ..message_receive.chat_stream import chat_manager
+from src.person_info.relationship_manager import relationship_manager
+
+import math
+import re
+import traceback
+from typing import Optional, Tuple, Dict, Any
+from maim_message import UserInfo
 
 # from ..message_receive.message_buffer import message_buffer
-from ..utils.timer_calculator import Timer
-from src.person_info.relationship_manager import relationship_manager
-from typing import Optional, Tuple, Dict, Any
 
 logger = get_logger("chat")
 
@@ -70,6 +72,15 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
             message.processed_plain_text,
             fast_retrieval=True,
         )
+        text_len = len(message.processed_plain_text)
+        # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
+        # 采用对数函数实现递减增长
+
+        base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
+        base_interest = min(max(base_interest, 0.01), 0.05)
+
+        interested_rate += base_interest
+
         logger.trace(f"记忆激活率: {interested_rate:.2f}")
 
     if is_mentioned:
@@ -101,7 +112,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
 #     return "seglist"
 
 
-def _check_ban_words(text: str, chat, userinfo) -> bool:
+def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
     """检查消息是否包含过滤词
 
     Args:
@@ -121,7 +132,7 @@ def _check_ban_words(text: str, chat, userinfo) -> bool:
     return False
 
 
-def _check_ban_regex(text: str, chat, userinfo) -> bool:
+def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
     """检查消息是否匹配过滤正则表达式
 
     Args:
@@ -132,17 +143,12 @@ def _check_ban_regex(text: str, chat, userinfo) -> bool:
     Returns:
         bool: 是否匹配过滤正则
     """
-    for pattern_str in global_config.message_receive.ban_msgs_regex:
-        try:
-            # 编译正则表达式
-            pattern = re.compile(pattern_str)
-            if pattern.search(text):
-                chat_name = chat.group_info.group_name if chat.group_info else "私聊"
-                logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
-                return True
-        except re.error as e:
-            logger.warning(f"无效的正则表达式模式 '{pattern_str}': {e}")
-            continue
+    for pattern in global_config.message_receive.ban_msgs_regex:
+        if re.search(pattern, text):
+            chat_name = chat.group_info.group_name if chat.group_info else "私聊"
+            logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
+            logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
+            return True
     return False
 
 
@@ -211,18 +217,12 @@ class HeartFCMessageReceiver:
 
             # 6. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
-            # await subheartflow.interest_chatting.increase_interest(value=interested_rate)
-            subheartflow.add_interest_message(message, interested_rate, is_mentioned)
+            subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             # 7. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
-            current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
-            logger.info(
-                f"[{current_time}][{mes_name}]"
-                f"{userinfo.user_nickname}:"
-                f"{message.processed_plain_text}"
-                f"[激活: {interested_rate:.1f}]"
-            )
+            # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}")
 
             # 8. 关系处理
             if global_config.relationship.give_name:

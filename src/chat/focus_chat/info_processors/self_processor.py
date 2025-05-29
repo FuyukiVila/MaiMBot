@@ -58,7 +58,7 @@ class SelfProcessor(BaseProcessor):
             model=global_config.model.focus_self_recognize,
             temperature=global_config.model.focus_self_recognize["temp"],
             max_tokens=800,
-            request_type="focus_self_identify",
+            request_type="focus.processor.self_identify",
         )
 
         name = chat_manager.get_stream_name(self.subheartflow_id)
@@ -185,8 +185,8 @@ class SelfProcessor(BaseProcessor):
         if content == "None":
             content = ""
         # 记录初步思考结果
-        logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
-        logger.info(f"{self.log_prefix} 自我识别结果: {content}")
+        # logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
+        logger.info(f"{self.log_prefix} 自我认知: {content}")
 
         return content
 

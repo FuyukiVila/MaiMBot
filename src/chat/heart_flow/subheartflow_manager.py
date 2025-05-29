@@ -4,7 +4,6 @@ from typing import Dict, Any, Optional, List
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
-from src.chat.heart_flow.mai_state_manager import MaiStateInfo
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 
 
@@ -54,10 +53,9 @@ async def _try_set_subflow_absent_internal(subflow: "SubHeartflow", log_prefix: 
 class SubHeartflowManager:
     """管理所有活跃的 SubHeartflow 实例。"""
 
-    def __init__(self, mai_state_info: MaiStateInfo):
+    def __init__(self):
         self.subheartflows: Dict[Any, "SubHeartflow"] = {}
         self._lock = asyncio.Lock()  # 用于保护 self.subheartflows 的访问
-        self.mai_state_info: MaiStateInfo = mai_state_info  # 存储传入的 MaiStateInfo 实例
 
     async def force_change_state(self, subflow_id: Any, target_state: ChatState) -> bool:
         """强制改变指定子心流的状态"""
@@ -91,16 +89,12 @@ class SubHeartflowManager:
                 if subflow.should_stop:
                     logger.warning(f"尝试获取已停止的子心流 {subheartflow_id}，正在重新激活")
                     subflow.should_stop = False  # 重置停止标志
-
-                subflow.last_active_time = time.time()  # 更新活跃时间
-                # logger.debug(f"获取到已存在的子心流: {subheartflow_id}")
                 return subflow
 
             try:
                 # 初始化子心流, 传入 mai_state_info
                 new_subflow = SubHeartflow(
                     subheartflow_id,
-                    self.mai_state_info,
                 )
 
                 # 首先创建并添加聊天观察者

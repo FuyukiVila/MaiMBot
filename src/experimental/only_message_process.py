@@ -1,10 +1,12 @@
-from ast import pattern
-import re
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
+from src.chat.message_receive.chat_stream import ChatStream
+
+from maim_message import UserInfo
 from datetime import datetime
+import re
 
 logger = get_logger("pfc")
 
@@ -16,9 +18,9 @@ class MessageProcessor:
         self.storage = MessageStorage()
 
     @staticmethod
-    def _check_ban_words(text: str, chat, userinfo) -> bool:
+    def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
         """检查消息中是否包含过滤词"""
-        for word in global_config.chat.ban_words:
+        for word in global_config.message_receive.ban_words:
             if word in text:
                 logger.info(
                     f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
@@ -28,20 +30,14 @@ class MessageProcessor:
         return False
 
     @staticmethod
-    def _check_ban_regex(text: str, chat, userinfo) -> bool:
+    def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
         """检查消息是否匹配过滤正则表达式"""
-        for pattern_str in global_config.chat.ban_msgs_regex:
-            try:
-                pattern = re.compile(pattern_str)
-                if pattern.search(text):
-                    logger.info(
-                        f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
-                    )
-                    logger.info(f"[正则表达式过滤]消息匹配到{pattern.pattern}，filtered")
-                    return True
-            except re.error as e:
-                    logger.warning(f"无效的正则表达式模式 '{pattern_str}': {e}")
-                    continue
+        for pattern in global_config.message_receive.ban_msgs_regex:
+            if re.search(pattern, text):
+                chat_name = chat.group_info.group_name if chat.group_info else "私聊"
+                logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
+                logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
+                return True
         return False
 
     async def process_message(self, message: MessageRecv) -> None:

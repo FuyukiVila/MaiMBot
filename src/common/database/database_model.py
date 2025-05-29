@@ -44,9 +44,9 @@ class ChatStreams(BaseModel):
     #   platform: "qq"
     #   group_id: "941657197"
     #   group_name: "测试"
-    group_platform = TextField()
-    group_id = TextField()
-    group_name = TextField()
+    group_platform = TextField(null=True)  # 群聊信息可能不存在
+    group_id = TextField(null=True)
+    group_name = TextField(null=True)
 
     # last_active_time: 1746623771.4825106 (时间戳，精确到小数点后7位)
     last_active_time = DoubleField()
@@ -147,6 +147,7 @@ class Messages(BaseModel):
     user_cardname = TextField(null=True)
 
     processed_plain_text = TextField(null=True)  # 处理后的纯文本消息
+    display_message = TextField(null=True)  # 显示的消息
     detailed_plain_text = TextField(null=True)  # 详细的纯文本消息
     memorized_times = IntegerField(default=0)  # 被记忆的次数
 
