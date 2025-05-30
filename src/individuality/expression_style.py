@@ -14,13 +14,13 @@ def init_prompt() -> None:
     personality_expression_prompt = """
 {personality}
 
-请从以上人设中总结出这个角色可能的语言风格
+请从以上人设中总结出这个角色可能的语言风格，你必须严格根据人设引申，不要输出例子
 思考回复的特殊内容和情感
 思考有没有特殊的梗，一并总结成语言风格
 总结成如下格式的规律，总结的内容要详细，但具有概括性：
 当"xxx"时，可以"xxx", xxx不超过10个字
 
-例如：
+例如（不要输出例子）：
 当"表示十分惊叹"时，使用"我嘞个xxxx"
 当"表示讽刺的赞同，不想讲道理"时，使用"对对对"
 当"想说明某个观点，但懒得明说"，使用"懂的都懂"
@@ -34,13 +34,12 @@ class PersonalityExpression:
     def __init__(self):
         self.express_learn_model: LLMRequest = LLMRequest(
             model=global_config.model.focus_expressor,
-            temperature=0.1,
-            max_tokens=256,
+            max_tokens=512,
             request_type="expressor.learner",
         )
         self.meta_file_path = os.path.join("data", "expression", "personality", "expression_style_meta.json")
         self.expressions_file_path = os.path.join("data", "expression", "personality", "expressions.json")
-        self.max_calculations = 5
+        self.max_calculations = 10
 
     def _read_meta_data(self):
         if os.path.exists(self.meta_file_path):
