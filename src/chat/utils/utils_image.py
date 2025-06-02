@@ -128,7 +128,7 @@ class ImageManager:
                 return f"[表情包，含义看起来是：{cached_description}]"
 
             # 根据配置决定是否保存图片
-            if global_config.emoji.steal_emoji:
+            if global_config.emoji.save_emoji:
                 # 生成文件名和路径
                 logger.debug(f"保存表情包: {image_hash}")
                 current_timestamp = time.time()
