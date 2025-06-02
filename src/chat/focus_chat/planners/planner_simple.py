@@ -56,23 +56,9 @@ def init_prompt():
 请输出你提取的JSON，不要有任何其他文字或解释：
 
 """,
-        "planner_prompt",
+        "simple_planner_prompt",
     )
-
-    Prompt(
-        """
-{raw_output}
-请从上面这段内容中提取出JSON内容，不要有任何其他文字或解释。
-以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
-请你以下面格式输出：
-{{
-    "action": "action_name"
-    "参数": "参数的值"(可能有多个参数),
-}}
-
-请输出你提取的JSON，不要有任何其他文字或解释：""",
-        "planner_prompt_json",
-    )
+    
 
     Prompt(
         """
@@ -151,7 +137,8 @@ class ActionPlanner(BasePlanner):
                     self_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
                     structured_info = info.get_processed_info()
-                    # print(f"structured_info: {structured_info}")
+                else:
+                    extra_info.append(info.get_processed_info())
                 # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
                 # extra_info.append(info.get_processed_info())
 
@@ -206,16 +193,6 @@ class ActionPlanner(BasePlanner):
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
                 action = "no_reply"
 
-            # try:
-            #     prompt_json = await global_prompt_manager.get_prompt_async("planner_prompt_json")
-            #     prompt_json = prompt_json.format(raw_output=llm_content)
-            #     llm_content_json, (reasoning_content_json, _) = await self.utils_llm.generate_response_async(prompt=prompt_json)
-            #     logger.debug(f"{self.log_prefix}LLM格式化JSON: {llm_content_json}")
-            #     logger.debug(f"{self.log_prefix}LLM格式化理由: {reasoning_content_json}")
-            # except Exception as json_e:
-            #     logger.error(f"{self.log_prefix}解析LLM响应JSON失败，模型返回不标准: {json_e}. LLM原始输出: '{llm_content}'")
-            #     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
-            #     action = "no_reply"
 
             if llm_content:
                 try:
@@ -242,6 +219,15 @@ class ActionPlanner(BasePlanner):
                             action_data[key] = value
 
                     action_data["identity"] = self_info
+                    
+                    extra_info_block = "\n".join(extra_info)
+                    extra_info_block += f"\n{structured_info}"
+                    if extra_info or structured_info:
+                        extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+                    else:
+                        extra_info_block = ""
+                    
+                    action_data["extra_info_block"] = extra_info_block
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
@@ -258,8 +244,9 @@ class ActionPlanner(BasePlanner):
 
                 except Exception as json_e:
                     logger.warning(
-                        f"{self.log_prefix}解析LLM响应JSON失败，模型返回不标准: {json_e}. LLM原始输出: '{llm_content}'"
+                        f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'"
                     )
+                    traceback.print_exc()
                     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
                     action = "no_reply"
 
@@ -280,9 +267,13 @@ class ActionPlanner(BasePlanner):
         )
 
         action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}
+    
+
+    
 
         plan_result = {
             "action_result": action_result,
+            # "extra_info_block": extra_info_block,
             "current_mind": current_mind,
             "observed_messages": observed_messages,
             "action_prompt": prompt,
@@ -311,7 +302,7 @@ class ActionPlanner(BasePlanner):
                 if running_memorys:
                     memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
                     for running_memory in running_memorys:
-                        memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
+                        memory_str += f"{running_memory['content']}\n"
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
@@ -380,7 +371,7 @@ class ActionPlanner(BasePlanner):
             # 获取当前时间
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-            planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
+            planner_prompt_template = await global_prompt_manager.get_prompt_async("simple_planner_prompt")
             prompt = planner_prompt_template.format(
                 self_info_block=self_info_block,
                 memory_str=memory_str,
