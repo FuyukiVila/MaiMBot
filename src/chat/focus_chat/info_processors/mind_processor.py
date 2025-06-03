@@ -23,7 +23,7 @@ logger = get_logger("processor")
 
 def init_prompt():
     group_prompt = """
-{memory_str}{extra_info}{relation_prompt}
+{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
@@ -42,7 +42,7 @@ def init_prompt():
 
     private_prompt = """
 你的名字是{bot_name}
-{memory_str}{extra_info}{relation_prompt}
+{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
@@ -68,8 +68,7 @@ class MindProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.model.focus_chat_mind,
-            # temperature=global_config.model.focus_chat_mind["temp"],
+            model=global_config.model.planner,
             max_tokens=800,
             request_type="focus.processor.chat_mind",
         )

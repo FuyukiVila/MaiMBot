@@ -32,7 +32,6 @@ from rich.panel import Panel
 from src.common.database.database import db
 from src.common.database.database_model import (
     ChatStreams,
-    LLMUsage,
     Emoji,
     Messages,
     Images,
@@ -250,8 +249,6 @@ class MongoToSQLiteMigrator:
                     "nickname": "nickname",
                     "relationship_value": "relationship_value",
                     "konw_time": "know_time",
-                    "msg_interval": "msg_interval",
-                    "msg_interval_list": "msg_interval_list",
                 },
                 unique_fields=["person_id"],
             ),

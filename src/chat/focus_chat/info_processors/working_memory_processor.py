@@ -60,8 +60,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.model.focus_chat_mind,
-            temperature=global_config.model.focus_chat_mind["temp"],
+            model=global_config.model.planner,
             max_tokens=800,
             request_type="focus.processor.working_memory",
         )
@@ -120,8 +119,10 @@ class WorkingMemoryProcessor(BaseProcessor):
             memory_str=memory_choose_str,
         )
 
-        print(f"prompt: {prompt}")
+
+        # print(f"prompt: {prompt}")
         
+
         # 调用LLM处理记忆
         content = ""
         try:
@@ -197,7 +198,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         """
         try:
             await working_memory.add_memory(content=content, from_source="chat_text")
-            logger.debug(f"{self.log_prefix} 异步添加新记忆成功: {content[:30]}...")
+            # logger.debug(f"{self.log_prefix} 异步添加新记忆成功: {content[:30]}...")
         except Exception as e:
             logger.error(f"{self.log_prefix} 异步添加新记忆失败: {e}")
             logger.error(traceback.format_exc())
@@ -211,7 +212,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         """
         try:
             merged_memory = await working_memory.merge_memory(memory_id1, memory_id2)
-            logger.debug(f"{self.log_prefix} 异步合并记忆成功: {memory_id1} 和 {memory_id2}...")
+            # logger.debug(f"{self.log_prefix} 异步合并记忆成功: {memory_id1} 和 {memory_id2}...")
             logger.debug(f"{self.log_prefix} 合并后的记忆梗概: {merged_memory.summary.get('brief')}")
             logger.debug(f"{self.log_prefix} 合并后的记忆要点: {merged_memory.summary.get('points')}")
 

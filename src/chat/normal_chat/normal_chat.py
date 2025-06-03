@@ -79,7 +79,7 @@ class NormalChat:
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream, self.stream_name)
         self.replyer = DefaultReplyer(chat_id=self.stream_id)
-        
+
         self.replyer.chat_stream = self.chat_stream
 
         self._initialized = True
@@ -168,7 +168,7 @@ class NormalChat:
         if random() < global_config.normal_chat.emoji_chance:
             emoji_raw = await emoji_manager.get_emoji_for_text(response)
             if emoji_raw:
-                emoji_path, description = emoji_raw
+                emoji_path, description, _emotion = emoji_raw
                 emoji_cq = image_path_to_base64(emoji_path)
 
                 thinking_time_point = round(message.message_info.time, 2)
@@ -192,19 +192,19 @@ class NormalChat:
                 await message_manager.add_message(bot_message)
 
     # 改为实例方法 (虽然它只用 message.chat_stream, 但逻辑上属于实例)
-    async def _update_relationship(self, message: MessageRecv, response_set):
-        """更新关系情绪"""
-        ori_response = ",".join(response_set)
-        stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text)
-        user_info = message.message_info.user_info
-        platform = user_info.platform
-        await relationship_manager.calculate_update_relationship_value(
-            user_info,
-            platform,
-            label=emotion,
-            stance=stance,  # 使用 self.chat_stream
-        )
-        self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
+    # async def _update_relationship(self, message: MessageRecv, response_set):
+    #     """更新关系情绪"""
+    #     ori_response = ",".join(response_set)
+    #     stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text)
+    #     user_info = message.message_info.user_info
+    #     platform = user_info.platform
+    #     await relationship_manager.calculate_update_relationship_value(
+    #         user_info,
+    #         platform,
+    #         label=emotion,
+    #         stance=stance,  # 使用 self.chat_stream
+    #     )
+    #     self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
 
     async def _reply_interested_message(self) -> None:
         """
@@ -243,16 +243,14 @@ class NormalChat:
                         self.interest_dict.pop(msg_id, None)
 
     # 改为实例方法, 移除 chat 参数
-    async def normal_response(
-        self, message: MessageRecv, is_mentioned: bool, interested_rate: float
-    ) -> None:
+    async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
         # 新增：如果已停用，直接返回
         if self._disabled:
             logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
             return
 
         timing_results = {}
-        reply_probability = 1.0 if is_mentioned else 0.0  # 如果被提及，基础概率为1，否则需要意愿判断
+        reply_probability = 1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
 
         # 意愿管理器：设置当前message信息
         willing_manager.setup(message, self.chat_stream, is_mentioned, interested_rate)
@@ -286,7 +284,6 @@ class NormalChat:
 
             # 回复前处理
             await willing_manager.before_generate_reply_handle(message.message_info.message_id)
-
 
             thinking_id = await self._create_thinking_message(message)
 
@@ -362,6 +359,9 @@ class NormalChat:
                     if action_type == "no_action":
                         logger.debug(f"[{self.stream_name}] Planner决定不执行任何额外动作")
                         return None
+                    elif action_type == "change_to_focus_chat":
+                        logger.info(f"[{self.stream_name}] Planner决定切换到focus聊天模式")
+                        return None
 
                     # 执行额外的动作（不影响回复生成）
                     action_result = await self._execute_action(action_type, action_data, message, thinking_id)
@@ -396,7 +396,9 @@ class NormalChat:
             elif plan_result:
                 logger.debug(f"[{self.stream_name}] 额外动作处理完成: {plan_result['action_type']}")
 
-            if not response_set or (self.enable_planner and self.action_type != "no_action"):
+            if not response_set or (
+                self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"]
+            ):
                 logger.info(f"[{self.stream_name}] 模型未生成回复内容")
                 # 如果模型未生成回复，移除思考消息
                 container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
@@ -445,15 +447,23 @@ class NormalChat:
 
                 # 检查是否需要切换到focus模式
                 if global_config.chat.chat_mode == "auto":
-                    await self._check_switch_to_focus()
+                    if self.action_type == "change_to_focus_chat":
+                        logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的请求")
+                        if self.on_switch_to_focus_callback:
+                            await self.on_switch_to_focus_callback()
+                        else:
+                            logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
+                        return
+                    else:
+                        await self._check_switch_to_focus()
 
             info_catcher.done_catch()
 
             with Timer("处理表情包", timing_results):
                 await self._handle_emoji(message, response_set[0])
 
-            with Timer("关系更新", timing_results):
-                await self._update_relationship(message, response_set)
+            # with Timer("关系更新", timing_results):
+            #     await self._update_relationship(message, response_set)
 
             # 回复后处理
             await willing_manager.after_generate_reply_handle(message.message_info.message_id)

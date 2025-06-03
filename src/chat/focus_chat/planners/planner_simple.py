@@ -11,6 +11,7 @@ from src.chat.focus_chat.info.mind_info import MindInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.self_info import SelfInfo
+from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
@@ -29,6 +30,10 @@ def init_prompt():
         """
 你的自我认知是：
 {self_info_block}
+请记住你的性格，身份和特点。
+
+{relation_info_block}
+
 {extra_info_block}
 {memory_str}
 
@@ -65,7 +70,7 @@ def init_prompt():
     描述：{action_description}
     {action_parameters}
     使用该动作的场景：
-    {action_require}""",
+{action_require}""",
         "action_prompt",
     )
 
@@ -75,7 +80,7 @@ class ActionPlanner(BasePlanner):
         super().__init__(log_prefix, action_manager)
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.model.focus_planner,
+            model=global_config.model.planner,
             max_tokens=1000,
             request_type="focus.planner",  # 用于动作规划
         )
@@ -122,6 +127,7 @@ class ActionPlanner(BasePlanner):
             observed_messages_str = ""
             chat_type = "group"
             is_group_chat = True
+            relation_info = ""
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
                     observed_messages = info.get_talking_message()
@@ -134,6 +140,8 @@ class ActionPlanner(BasePlanner):
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, SelfInfo):
                     self_info = info.get_processed_info()
+                elif isinstance(info, RelationInfo):
+                    relation_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
                     structured_info = info.get_processed_info()
                 else:
@@ -164,6 +172,7 @@ class ActionPlanner(BasePlanner):
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await self.build_planner_prompt(
                 self_info_block=self_info,
+                relation_info_block=relation_info,
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=None,
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
@@ -217,14 +226,14 @@ class ActionPlanner(BasePlanner):
                             action_data[key] = value
 
                     action_data["identity"] = self_info
-                    
+
                     extra_info_block = "\n".join(extra_info)
                     extra_info_block += f"\n{structured_info}"
                     if extra_info or structured_info:
                         extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
                     else:
                         extra_info_block = ""
-                    
+
                     action_data["extra_info_block"] = extra_info_block
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
@@ -263,9 +272,6 @@ class ActionPlanner(BasePlanner):
         )
 
         action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}
-    
-
-    
 
         plan_result = {
             "action_result": action_result,
@@ -280,6 +286,7 @@ class ActionPlanner(BasePlanner):
     async def build_planner_prompt(
         self,
         self_info_block: str,
+        relation_info_block: str,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
@@ -292,13 +299,17 @@ class ActionPlanner(BasePlanner):
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
+
+            if relation_info_block:
+                relation_info_block = f"以下是你和别人的关系描述：\n{relation_info_block}"
+            else:
+                relation_info_block = ""
+                
             memory_str = ""
-            if global_config.focus_chat.parallel_processing:
-                memory_str = ""
-                if running_memorys:
-                    memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-                    for running_memory in running_memorys:
-                        memory_str += f"{running_memory['content']}\n"
+            if running_memorys:
+                memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
+                for running_memory in running_memorys:
+                    memory_str += f"{running_memory['content']}\n"
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
@@ -338,7 +349,7 @@ class ActionPlanner(BasePlanner):
 
                 require_text = ""
                 for require_item in using_actions_info["require"]:
-                    require_text += f"  - {require_item}\n"
+                    require_text += f"{require_item}\n"
 
                 if param_text:
                     param_text = f"参数：\n{param_text}"
@@ -369,6 +380,7 @@ class ActionPlanner(BasePlanner):
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("simple_planner_prompt")
             prompt = planner_prompt_template.format(
+                relation_info_block=relation_info_block,
                 self_info_block=self_info_block,
                 memory_str=memory_str,
                 time_block=time_block,
