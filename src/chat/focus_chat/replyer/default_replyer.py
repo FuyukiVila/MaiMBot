@@ -30,6 +30,11 @@ logger = get_logger("expressor")
 def init_prompt():
     Prompt(
         """
+你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
+{style_habbits}
+请你根据情景使用以下句法：
+{grammar_habbits}
+        
 {extra_info_block}
 
 {time_block}
@@ -40,11 +45,7 @@ def init_prompt():
 
 {chat_target}
 {identity}，在这聊天中，"{target_message}"引起了你的注意，你想要在群里发言或者回复这条消息。
-你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
-你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
-{style_habbits}
-请你根据情景使用以下句法：
-{grammar_habbits}
+你需要使用合适的语言习惯和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
@@ -77,7 +78,7 @@ def init_prompt():
 不要浮夸，不要夸张修辞，只输出一条回复就好。
 现在，你说：
 """,
-        "default_replyer_private_prompt", 
+        "default_replyer_private_prompt",
     )
 
 
@@ -183,7 +184,7 @@ class DefaultReplyer:
             return False, None
 
         # --- 回复器 (Replier) 的定义 --- #
-        
+
     async def deal_emoji(
         self,
         anchor_message: MessageRecv,
@@ -194,10 +195,9 @@ class DefaultReplyer:
         """
         表情动作处理类
         """
-        
+
         await self._create_thinking_message(anchor_message, thinking_id)
-        
-        
+
         try:
             has_sent_something = False
             sent_msg_list = []
@@ -210,8 +210,7 @@ class DefaultReplyer:
                     reply.append(("emoji", emoji_base64))
                 else:
                     logger.warning(f"{self.log_prefix} 没有找到合适表情")
-                    
-                
+
             if reply:
                 with Timer("发送表情", cycle_timers):
                     sent_msg_list = await self.send_response_messages(
@@ -232,8 +231,6 @@ class DefaultReplyer:
             logger.error(f"回复失败: {e}")
             traceback.print_exc()
             return False, None
-    
-    
 
     async def reply(
         self,
@@ -297,7 +294,7 @@ class DefaultReplyer:
                     # TODO: API-Adapter修改标记
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
-                    
+
                     logger.debug(f"prompt: {prompt}")
                     logger.info(f"最终回复: {content}")
 
@@ -389,8 +386,8 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
-        
-                # 关键词检测与反应
+
+        # 关键词检测与反应
         keywords_reaction_prompt = ""
         try:
             # 处理关键词规则
@@ -398,7 +395,7 @@ class DefaultReplyer:
                 if any(keyword in target_message for keyword in rule.keywords):
                     logger.info(f"检测到关键词规则：{rule.keywords}，触发反应：{rule.reaction}")
                     keywords_reaction_prompt += f"{rule.reaction}，"
-            
+
             # 处理正则表达式规则
             for rule in global_config.keyword_reaction.regex_rules:
                 for pattern_str in rule.regex:
@@ -416,7 +413,7 @@ class DefaultReplyer:
                         continue
         except Exception as e:
             logger.error(f"关键词检测与反应时发生异常: {str(e)}", exc_info=True)
-        
+
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         # logger.debug("开始构建 focus prompt")

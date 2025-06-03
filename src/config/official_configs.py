@@ -128,6 +128,9 @@ class NormalChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
+    enable_planner: bool = False
+    """是否启用动作规划器"""
+
 
 @dataclass
 class FocusChatConfig(ConfigBase):
@@ -204,15 +207,6 @@ class EmojiConfig(ConfigBase):
 
     check_interval: int = 120
     """表情包检查间隔（分钟）"""
-
-    save_pic: bool = True
-    """是否保存图片"""
-
-    save_emoji: bool = True
-    """是否保存表情包"""
-
-    cache_emoji: bool = True
-    """是否缓存表情包"""
 
     steal_emoji: bool = True
     """是否偷取表情包，让麦麦可以发送她保存的这些表情包"""
@@ -303,16 +297,16 @@ class KeywordRuleConfig(ConfigBase):
         """验证配置"""
         if not self.keywords and not self.regex:
             raise ValueError("关键词规则必须至少包含keywords或regex中的一个")
-        
+
         if not self.reaction:
             raise ValueError("关键词规则必须包含reaction")
-        
+
         # 验证正则表达式
         for pattern in self.regex:
             try:
                 re.compile(pattern)
             except re.error as e:
-                raise ValueError(f"无效的正则表达式 '{pattern}': {str(e)}")
+                raise ValueError(f"无效的正则表达式 '{pattern}': {str(e)}") from e
 
 
 @dataclass

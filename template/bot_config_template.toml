@@ -1,5 +1,5 @@
 [inner]
-version = "2.9.1"
+version = "2.11.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -87,6 +87,8 @@ emoji_response_penalty = 0 # 对其他人发的表情包回复惩罚系数，设
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
 at_bot_inevitable_reply = true # @bot 必然回复
 
+enable_planner = false # 是否启用动作规划器（实验性功能，与focus_chat共享actions）
+
 down_frequency_rate = 3 # 降低回复频率的群组回复意愿降低系数 除法
 talk_frequency_down_groups = []  #降低回复频率的群号码
 
@@ -114,9 +116,7 @@ working_memory_processor = false # 是否启用工作记忆处理器，不稳定
 max_reg_num = 40 # 表情包最大注册数量
 do_replace = true # 开启则在达到最大数量时删除（替换）表情包，关闭则达到最大数量时不会继续收集表情包
 check_interval = 120 # 检查表情包（注册，破损，删除）的时间间隔(分钟)
-save_pic = true # 是否保存图片
-cache_emoji = true # 是否缓存表情包
-steal_emoji = true # 是否偷取表情包，让麦麦可以发送她保存的这些表情包
+steal_emoji = true # 是否偷取表情包，让麦麦可以将一些表情包据为己有
 content_filtration = false  # 是否启用表情包过滤，只有符合该要求的表情包才会被保存
 filtration_prompt = "符合公序良俗" # 表情包过滤要求，只有符合该要求的表情包才会被保存
 
