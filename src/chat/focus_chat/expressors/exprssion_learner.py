@@ -131,8 +131,12 @@ class ExpressionLearner:
         else:
             raise ValueError(f"Invalid type: {type}")
         # logger.info(f"开始学习{type_str}...")
-        learnt_expressions,chat_id = await self.learn_expression(type, num)
-        
+        result = await self.learn_expression(type, num)
+        if result is None:
+            logger.info(f"学习{type_str}失败或没有获取到消息")
+            return [] # 如果学习失败或没有消息，返回空列表
+        learnt_expressions, chat_id = result
+
         chat_stream = chat_manager.get_stream(chat_id)
         if chat_stream.group_info:
             group_name = chat_stream.group_info.group_name
