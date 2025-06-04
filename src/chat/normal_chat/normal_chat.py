@@ -8,7 +8,6 @@ from src.common.logger_manager import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
 from src.chat.message_receive.chat_stream import ChatStream, chat_manager
-from src.person_info.relationship_manager import relationship_manager
 from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.prompt_builder import global_prompt_manager
@@ -40,8 +39,7 @@ class NormalChat:
         # Interest dict
         self.interest_dict = interest_dict
 
-        self.is_group_chat: bool = False
-        self.chat_target_info: Optional[dict] = None
+        self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.stream_id)
 
         self.willing_amplifier = 1
         self.start_time = time.time()
@@ -72,8 +70,7 @@ class NormalChat:
         """异步初始化，获取聊天类型和目标信息。"""
         if self._initialized:
             return
-
-        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
+        
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
         # 初始化Normal Chat专用表达器

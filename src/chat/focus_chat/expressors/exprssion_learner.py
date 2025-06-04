@@ -131,11 +131,11 @@ class ExpressionLearner:
         else:
             raise ValueError(f"Invalid type: {type}")
         # logger.info(f"开始学习{type_str}...")
-        result = await self.learn_expression(type, num)
-        if result is None:
-            logger.info(f"学习{type_str}失败或没有获取到消息")
-            return [] # 如果学习失败或没有消息，返回空列表
-        learnt_expressions, chat_id = result
+        res = await self.learn_expression(type, num)
+
+        if res is None:
+            return []
+        learnt_expressions, chat_id = res
 
         chat_stream = chat_manager.get_stream(chat_id)
         if chat_stream.group_info:
@@ -144,7 +144,6 @@ class ExpressionLearner:
             group_name = f"{chat_stream.user_info.user_nickname}的私聊"
         learnt_expressions_str = ""
         for _chat_id, situation, style in learnt_expressions:
-            
             learnt_expressions_str += f"{situation}->{style}\n"
         logger.info(f"在 {group_name} 学习到{type_str}:\n{learnt_expressions_str}")
         # learnt_expressions: List[(chat_id, situation, style)]
@@ -227,7 +226,7 @@ class ExpressionLearner:
             return None
         # 转化成str
         chat_id: str = random_msg[0]["chat_id"]
-        # random_msg_str: str = await build_readable_messages(random_msg, timestamp_mode="normal")
+        # random_msg_str: str = build_readable_messages(random_msg, timestamp_mode="normal")
         random_msg_str: str = await build_anonymous_messages(random_msg)
         # print(f"random_msg_str:{random_msg_str}")
 
@@ -248,7 +247,7 @@ class ExpressionLearner:
 
         expressions: List[Tuple[str, str, str]] = self.parse_expression_response(response, chat_id)
 
-        return expressions,chat_id
+        return expressions, chat_id
 
     def parse_expression_response(self, response: str, chat_id: str) -> List[Tuple[str, str, str]]:
         """
