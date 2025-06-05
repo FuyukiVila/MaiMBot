@@ -43,8 +43,7 @@ def init_prompt():
 
 基于以上聊天上下文和用户的最新消息，选择最合适的action。
 
-请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
-请输出你提取的JSON，不要有任何其他文字或解释：
+请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。不要有任何其他文字或解释：
 """,
         "normal_chat_planner_prompt",
     )
@@ -70,7 +69,6 @@ class NormalChatPlanner:
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
-            max_tokens=1000,
             request_type="normal_chat.planner",  # 用于normal_chat动作规划
         )
 
@@ -148,10 +146,12 @@ class NormalChatPlanner:
 
             # 使用LLM生成动作决策
             try:
-                content, reasoning_content, model_name = await self.planner_llm.generate_response(prompt)
+                content, (reasoning_content, model_name) = await self.planner_llm.generate_response_async(prompt)
                 
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {content}")
+                logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
+                logger.info(f"{self.log_prefix}规划器模型: {model_name}")
 
                 # 解析JSON响应
                 try:

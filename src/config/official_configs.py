@@ -107,9 +107,6 @@ class NormalChatConfig(ConfigBase):
     talk_frequency: float = 1
     """回复频率阈值"""
 
-    response_willing_amplifier: float = 1.0
-    """回复意愿放大系数"""
-
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
@@ -427,10 +424,10 @@ class ModelConfig(ConfigBase):
     utils_small: dict[str, Any] = field(default_factory=lambda: {})
     """组件小模型配置"""
 
-    normal_chat_1: dict[str, Any] = field(default_factory=lambda: {})
+    replyer_1: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat首要回复模型模型配置"""
 
-    normal_chat_2: dict[str, Any] = field(default_factory=lambda: {})
+    replyer_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
 
     memory_summary: dict[str, Any] = field(default_factory=lambda: {})
@@ -442,7 +439,6 @@ class ModelConfig(ConfigBase):
     focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
     """专注工作记忆模型配置"""
 
-
     focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 
@@ -451,9 +447,6 @@ class ModelConfig(ConfigBase):
 
     relation: dict[str, Any] = field(default_factory=lambda: {})
     """关系模型配置"""
-
-    focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
-    """专注表达器模型配置"""
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""

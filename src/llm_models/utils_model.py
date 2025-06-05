@@ -13,6 +13,7 @@ import os
 from src.common.database.database import db  # 确保 db 被导入用于 create_tables
 from src.common.database.database_model import LLMUsage  # 导入 LLMUsage 模型
 from src.config.config import global_config
+from src.common.tcp_connector import get_tcp_connector
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -123,6 +124,8 @@ class LLMRequest:
         self.stream = model.get("stream", False)
         self.pri_in = model.get("pri_in", 0)
         self.pri_out = model.get("pri_out", 0)
+        self.max_tokens = model.get("max_tokens", global_config.model.model_max_output_length)
+        # print(f"max_tokens: {self.max_tokens}")
         self.extra_body = model.get("extra_body", {})
 
         # 获取数据库实例
@@ -247,11 +250,27 @@ class LLMRequest:
         if stream_mode:
             payload["stream"] = stream_mode
 
+        if self.temp != 0.7:
+            payload["temperature"] = self.temp
+
+        # 添加enable_thinking参数（如果不是默认值False）
+        if not self.enable_thinking:
+            payload["enable_thinking"] = False
+
+        if self.thinking_budget != 4096:
+            payload["thinking_budget"] = self.thinking_budget
+
+        if self.max_tokens:
+            payload["max_tokens"] = max(self.max_tokens, payload.get("max_tokens", 0))
+
+        # if "max_tokens" not in payload and "max_completion_tokens" not in payload:
+        # payload["max_tokens"] = global_config.model.model_max_output_length
+        # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查
+        if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION and "max_tokens" in payload:
+            payload["max_completion_tokens"] = payload.pop("max_tokens")
+
         if extra_body:
             payload.update(extra_body)
-
-        if payload.get("max_tokens"):
-            payload["max_tokens"] = max(payload["max_tokens"], global_config.model.model_max_output_length)
 
         return {
             "policy": policy,
@@ -300,7 +319,7 @@ class LLMRequest:
                 # 似乎是openai流式必须要的东西,不过阿里云的qwq-plus加了这个没有影响
                 if request_content["stream_mode"]:
                     headers["Accept"] = "text/event-stream"
-                async with aiohttp.ClientSession() as session:
+                async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
                     async with session.post(
                         request_content["api_url"], headers=headers, json=request_content["payload"]
                     ) as response:
@@ -510,11 +529,11 @@ class LLMRequest:
                 logger.warning(f"检测到403错误，模型从 {old_model_name} 降级为 {self.model_name}")
 
                 # 对全局配置进行更新
-                if global_config.model.normal_chat_2.get("name") == old_model_name:
-                    global_config.model.normal_chat_2["name"] = self.model_name
+                if global_config.model.replyer_2.get("name") == old_model_name:
+                    global_config.model.replyer_2["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_normal 模型临时降级至{self.model_name}")
-                if global_config.model.normal_chat_1.get("name") == old_model_name:
-                    global_config.model.normal_chat_1["name"] = self.model_name
+                if global_config.model.replyer_1.get("name") == old_model_name:
+                    global_config.model.replyer_1["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_reasoning 模型临时降级至{self.model_name}")
 
                 if payload and "model" in payload:
@@ -641,6 +660,7 @@ class LLMRequest:
             ]
         else:
             messages = [{"role": "user", "content": prompt}]
+
         payload = {
             "model": self.model_name,
             "messages": messages,
@@ -658,8 +678,11 @@ class LLMRequest:
         if self.thinking_budget != 4096:
             payload["thinking_budget"] = self.thinking_budget
 
-        if "max_tokens" not in payload and "max_completion_tokens" not in payload:
-            payload["max_tokens"] = global_config.model.model_max_output_length
+        if self.max_tokens:
+            payload["max_tokens"] = self.max_tokens
+
+        # if "max_tokens" not in payload and "max_completion_tokens" not in payload:
+        # payload["max_tokens"] = global_config.model.model_max_output_length
         # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查
         if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION and "max_tokens" in payload:
             payload["max_completion_tokens"] = payload.pop("max_tokens")
@@ -725,18 +748,6 @@ class LLMRequest:
             return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
             # 防止小朋友们截图自己的key
 
-    async def generate_response(self, prompt: str) -> Tuple:
-        """根据输入的提示生成模型的异步响应"""
-
-        response = await self._execute_request(endpoint="/chat/completions", prompt=prompt)
-        # 根据返回值的长度决定怎么处理
-        if len(response) == 3:
-            content, reasoning_content, tool_calls = response
-            return content, reasoning_content, self.model_name, tool_calls
-        else:
-            content, reasoning_content = response
-            return content, reasoning_content, self.model_name
-
     async def generate_response_for_image(self, prompt: str, image_base64: str, image_format: str) -> Tuple:
         """根据输入的提示和图片生成模型的异步响应"""
 
@@ -770,29 +781,6 @@ class LLMRequest:
         else:
             content, reasoning_content = response
             return content, (reasoning_content, self.model_name)
-
-    async def generate_response_tool_async(self, prompt: str, tools: list, **kwargs) -> tuple[str, str, list]:
-        """异步方式根据输入的提示生成模型的响应"""
-        # 构建请求体，不硬编码max_tokens
-        data = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            **self.params,
-            **kwargs,
-            "tools": tools,
-        }
-
-        response = await self._execute_request(endpoint="/chat/completions", payload=data, prompt=prompt)
-        logger.debug(f"向模型 {self.model_name} 发送工具调用请求，包含 {len(tools)} 个工具，返回结果: {response}")
-        # 检查响应是否包含工具调用
-        if len(response) == 3:
-            content, reasoning_content, tool_calls = response
-            logger.debug(f"收到工具调用响应，包含 {len(tool_calls) if tool_calls else 0} 个工具调用")
-            return content, reasoning_content, tool_calls
-        else:
-            content, reasoning_content = response
-            logger.debug("收到普通响应，无工具调用")
-            return content, reasoning_content, None
 
     async def get_embedding(self, text: str) -> Union[list, None]:
         """异步方法：获取文本的embedding向量

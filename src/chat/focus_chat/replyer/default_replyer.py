@@ -87,8 +87,7 @@ class DefaultReplyer:
         self.log_prefix = "replyer"
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
-            model=global_config.model.focus_expressor,
-            # temperature=global_config.model.focus_expressor["temp"],
+            model=global_config.model.replyer_1,
             max_tokens=256,
             request_type="focus.expressor",
         )
@@ -291,7 +290,7 @@ class DefaultReplyer:
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
 
-                    logger.info(f"prompt: {prompt}")
+                    # logger.info(f"prompt: {prompt}")
                     logger.info(f"最终回复: {content}")
 
                 info_catcher.catch_after_llm_generated(
@@ -577,7 +576,9 @@ class DefaultReplyer:
         if emoji_raw:
             emoji_path, description, _emotion = emoji_raw
             emoji_base64 = image_path_to_base64(emoji_path)
-        return emoji_base64, description, _emotion
+            return emoji_base64, description, _emotion
+        else:
+            return None, None, None
 
     async def _build_single_sending_message(
         self,
