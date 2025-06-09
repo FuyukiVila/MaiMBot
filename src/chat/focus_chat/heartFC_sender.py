@@ -106,10 +106,13 @@ class HeartFCSender:
                     and not message.is_private_message()
                     and message.reply.processed_plain_text != "[System Trigger Context]"
                 ):
-                    message.set_reply(message.reply)
+                    # message.set_reply(message.reply)
+                    message.set_reply()
                     logger.debug(f"[{chat_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}...")
 
+            # print(f"message.display_message: {message.display_message}")
             await message.process()
+            # print(f"message.display_message: {message.display_message}")
 
             if typing:
                 if has_thinking:
