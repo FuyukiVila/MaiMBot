@@ -288,6 +288,8 @@ class MxpWillingManager(BaseWillingManager):
     @staticmethod
     def _get_relationship_level_num(relationship_value) -> int:
         """关系等级计算"""
+        if relationship_value is None:
+            return 0
         if -1000 <= relationship_value < -227:
             level_num = 0
         elif -227 <= relationship_value < -73:
