@@ -6,7 +6,7 @@ from src.chat.message_receive.message import MessageThinking
 from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import person_info_manager, PersonInfoManager
 from src.chat.utils.utils import process_llm_response
 
 
@@ -25,9 +25,7 @@ class NormalChatGenerator:
             request_type="normal.chat_2",
         )
 
-        self.model_sum = LLMRequest(
-            model=global_config.model.memory_summary, temperature=0.7, request_type="relation"
-        )
+        self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"
 
@@ -68,8 +66,7 @@ class NormalChatGenerator:
         enable_planner: bool = False,
         available_actions=None,
     ):
-
-        person_id = person_info_manager.get_person_id(
+        person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
 
@@ -102,7 +99,6 @@ class NormalChatGenerator:
             logger.debug(f"prompt:{prompt}\n生成回复：{content}")
 
             logger.info(f"对  {message.processed_plain_text}  的回复：{content}")
-
 
         except Exception:
             logger.exception("生成回复时出错")
