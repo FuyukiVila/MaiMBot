@@ -1,9 +1,9 @@
 import os
 from tavily import AsyncTavilyClient
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.tools.tool_can_use.base_tool import BaseTool
 
-logger = get_module_logger("tavily_tool")
+logger = get_logger("tavily_tool")
 
 
 class TavilyTool(BaseTool):
