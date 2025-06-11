@@ -2,10 +2,10 @@ import ast
 import contextlib
 import io
 from typing import Dict
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.tools.tool_can_use.base_tool import BaseTool
 
-logger = get_module_logger("eval_tool")
+logger = get_logger("eval_tool")
 
 
 class EvalTool(BaseTool):
