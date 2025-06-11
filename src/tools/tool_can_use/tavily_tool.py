@@ -7,15 +7,6 @@ logger = get_logger("tavily_tool")
 
 
 class TavilyTool(BaseTool):
-    proxies = {
-        "http": "http://127.0.0.1:7890",
-        "https": "http://127.0.0.1:7890",
-    }
-    _client = AsyncTavilyClient(
-        api_key=os.getenv("TAVILY_API_KEY"),
-        proxies=proxies,
-    )
-
     name = "tavily_tool"
     description = """从网络中搜索相关信息，对于任何你不知道的事情，或者需要最新信息的事情，使用这个工具。"""
 
@@ -34,16 +25,32 @@ class TavilyTool(BaseTool):
         "required": ["query"],
     }
 
+    def __init__(self):
+        self._client = None
+        self.proxies = {
+            "http": "http://127.0.0.1:7890",
+            "https": "http://127.0.0.1:7890",
+        }
+
     async def execute(self, function_args, message_txt=""):
         """执行Tavily搜索"""
+        if self._client is None:
+            api_key = os.getenv("TAVILY_API_KEY")
+            if not api_key:
+                return {"name": self.name, "content": "Tavily API key not found. Please configure TAVILY_API_KEY."}
+            self._client = AsyncTavilyClient(api_key=api_key, proxies=self.proxies)
+
         try:
+            query = function_args["query"]
+            max_results = function_args.get("max_results", 5)
+
             response = await self._client.search(
-                query=function_args["query"],
-                max_results=function_args.get("max_results", 5),
+                query=query,
                 search_depth="advanced",
-                include_answer="advanced",
+                include_answer=True,
+                max_results=max_results,
             )
-            answer = response.get("answer", None)
+            answer = response.get("answer")
             if not answer:
                 return {"name": self.name, "content": "没有找到相关结果"}
             logger.info(f"搜索结果: {answer}")
