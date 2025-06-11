@@ -4,10 +4,10 @@ import time
 import traceback
 from collections import deque
 from typing import List, Optional, Dict, Any, Deque, Callable, Awaitable
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.timer_calculator import Timer
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
@@ -97,8 +97,8 @@ class HeartFChatting:
         """
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
-        self.chat_stream = chat_manager.get_stream(self.stream_id)
-        self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
+        self.chat_stream = get_chat_manager().get_stream(self.stream_id)
+        self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
         self.memory_activator = MemoryActivator()
 
@@ -159,6 +159,13 @@ class HeartFChatting:
 
         for name, (observation_class, param_name) in OBSERVATION_CLASSES.items():
             try:
+                # 检查是否需要跳过WorkingMemoryObservation
+                if name == "WorkingMemoryObservation":
+                    # 如果工作记忆处理器被禁用，则跳过WorkingMemoryObservation
+                    if not global_config.focus_chat_processor.working_memory_processor:
+                        logger.debug(f"{self.log_prefix} 工作记忆处理器已禁用，跳过注册观察器 {name}")
+                        continue
+
                 # 根据参数名使用正确的参数
                 kwargs = {param_name: self.stream_id}
                 observation = observation_class(**kwargs)

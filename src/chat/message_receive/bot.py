@@ -1,9 +1,9 @@
 import traceback
 from typing import Dict, Any
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.manager.mood_manager import mood_manager  # 导入情绪管理器
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor
 from src.experimental.PFC.pfc_manager import PFCManager
@@ -59,10 +59,13 @@ class ChatBot:
             # 使用新的组件注册中心查找命令
             command_result = component_registry.find_command_by_text(text)
             if command_result:
-                command_class, matched_groups = command_result
+                command_class, matched_groups, intercept_message, plugin_name = command_result
+
+                # 获取插件配置
+                plugin_config = component_registry.get_plugin_config(plugin_name)
 
                 # 创建命令实例
-                command_instance = command_class(message)
+                command_instance = command_class(message, plugin_config)
                 command_instance.set_matched_groups(matched_groups)
 
                 try:
@@ -71,11 +74,12 @@ class ChatBot:
 
                     # 记录命令执行结果
                     if success:
-                        logger.info(f"命令执行成功: {command_class.__name__}")
+                        logger.info(f"命令执行成功: {command_class.__name__} (拦截: {intercept_message})")
                     else:
                         logger.warning(f"命令执行失败: {command_class.__name__} - {response}")
 
-                    return True, response, False  # 找到命令，不继续处理
+                    # 根据命令的拦截设置决定是否继续处理消息
+                    return True, response, not intercept_message  # 找到命令，根据intercept_message决定是否继续
 
                 except Exception as e:
                     logger.error(f"执行命令时出错: {command_class.__name__} - {e}")
@@ -88,7 +92,8 @@ class ChatBot:
                     except Exception as send_error:
                         logger.error(f"发送错误消息失败: {send_error}")
 
-                    return True, str(e), False  # 命令出错，不继续处理
+                    # 命令出错时，根据命令的拦截设置决定是否继续处理消息
+                    return True, str(e), not intercept_message
 
             # 没有找到命令，继续处理消息
             return False, None, True
@@ -127,10 +132,10 @@ class ChatBot:
             message = MessageRecv(message_data)
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
-            chat_manager.register_message(message)
+            get_chat_manager().register_message(message)
 
             # 创建聊天流
-            chat = await chat_manager.get_or_create_stream(
+            chat = await get_chat_manager().get_or_create_stream(
                 platform=message.message_info.platform,
                 user_info=user_info,
                 group_info=group_info,

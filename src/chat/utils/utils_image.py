@@ -13,7 +13,7 @@ from src.common.database.database_model import Images, ImageDescriptions
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -362,7 +362,15 @@ class ImageManager:
 
 
 # 创建全局单例
-image_manager = ImageManager()
+image_manager = None
+
+
+def get_image_manager() -> ImageManager:
+    """获取全局图片管理器单例"""
+    global image_manager
+    if image_manager is None:
+        image_manager = ImageManager()
+    return image_manager
 
 
 def image_path_to_base64(image_path: str) -> str:

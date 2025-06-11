@@ -4,7 +4,7 @@ from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.message_receive.chat_stream import ChatStream
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 # 不再需要导入动作类，因为已经在main.py中导入
 # import src.chat.actions.default_actions  # noqa
@@ -366,6 +366,12 @@ class ActionManager:
                 logger.error(f"未找到插件Action组件类: {action_name}")
                 return None
 
+            # 获取插件配置
+            component_info = component_registry.get_component_info(action_name)
+            plugin_config = None
+            if component_info and component_info.plugin_name:
+                plugin_config = component_registry.get_plugin_config(component_info.plugin_name)
+
             # 创建插件Action实例
             plugin_action_instance = component_class(
                 action_data=action_data,
@@ -377,6 +383,7 @@ class ActionManager:
                 replyer=replyer,
                 observations=observations,
                 log_prefix=log_prefix,
+                plugin_config=plugin_config,
             )
 
             # 创建兼容性包装器

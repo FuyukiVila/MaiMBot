@@ -7,7 +7,7 @@ from pathlib import Path
 if TYPE_CHECKING:
     from src.plugin_system.base.base_plugin import BasePlugin
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.base.component_types import ComponentType, PluginInfo
 
@@ -56,7 +56,7 @@ class PluginManager:
         logger.debug(f"插件模块加载完成 - 成功: {total_loaded_modules}, 失败: {total_failed_modules}")
 
         # 第二阶段：实例化所有已注册的插件类
-        from src.plugin_system.base.base_plugin import get_registered_plugin_classes, instantiate_and_register_plugin
+        from src.plugin_system.base.base_plugin import get_registered_plugin_classes
 
         plugin_classes = get_registered_plugin_classes()
         total_registered = 0
@@ -72,9 +72,10 @@ class PluginManager:
                 if plugin_dir:
                     self.plugin_paths[plugin_name] = plugin_dir
 
-            if instantiate_and_register_plugin(plugin_class, plugin_dir):
+            plugin_instance = plugin_class(plugin_dir=plugin_dir)
+            if plugin_instance.register_plugin():
                 total_registered += 1
-                self.loaded_plugins[plugin_name] = plugin_class
+                self.loaded_plugins[plugin_name] = plugin_instance
 
                 # 📊 显示插件详细信息
                 plugin_info = component_registry.get_plugin_info(plugin_name)
@@ -287,6 +288,17 @@ class PluginManager:
             logger.debug(f"已禁用插件: {plugin_name}")
             return True
         return False
+
+    def get_plugin_instance(self, plugin_name: str) -> Optional["BasePlugin"]:
+        """获取插件实例
+
+        Args:
+            plugin_name: 插件名称
+
+        Returns:
+            Optional[BasePlugin]: 插件实例或None
+        """
+        return self.loaded_plugins.get(plugin_name)
 
     def get_plugin_stats(self) -> Dict[str, Any]:
         """获取插件统计信息"""
