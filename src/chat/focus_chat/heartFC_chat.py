@@ -14,7 +14,7 @@ from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.relationship_processor import RelationshipProcessor
-from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
+from src.chat.focus_chat.info_processors.notused_mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 
 # from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
@@ -480,7 +480,7 @@ class HeartFChatting:
                 processor_task = asyncio.create_task(self._process_processors(self.observations))
 
                 # 等待三个任务完成
-                _, running_memorys, (all_plan_info, processor_time_costs) = await asyncio.gather(
+                _, running_memories, (all_plan_info, processor_time_costs) = await asyncio.gather(
                     action_modify_task, memory_task, processor_task
                 )
 
@@ -490,7 +490,7 @@ class HeartFChatting:
             }
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(all_plan_info, running_memorys)
+                plan_result = await self.action_planner.plan(all_plan_info, running_memories)
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),
