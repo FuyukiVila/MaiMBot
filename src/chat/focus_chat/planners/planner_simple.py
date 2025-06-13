@@ -15,7 +15,6 @@ from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import get_individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.actions.base_action import ChatMode
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
 from datetime import datetime
@@ -145,7 +144,7 @@ class ActionPlanner(BasePlanner):
             # 获取经过modify_actions处理后的最终可用动作集
             # 注意：动作的激活判定现在在主循环的modify_actions中完成
             # 使用Focus模式过滤动作
-            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
+            current_available_actions_dict = self.action_manager.get_using_actions_for_mode("focus")
 
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
@@ -165,7 +164,7 @@ class ActionPlanner(BasePlanner):
                 logger.info(f"{self.log_prefix}{reasoning}")
                 self.action_manager.restore_actions()
                 logger.debug(
-                    f"{self.log_prefix}沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+                    f"{self.log_prefix}[focus]沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
                 )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
@@ -263,10 +262,6 @@ class ActionPlanner(BasePlanner):
             traceback.print_exc()
             action = "no_reply"
             reasoning = f"Planner 内部处理错误: {outer_e}"
-
-        # logger.debug(
-        #     f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
-        # )
 
         # 恢复到默认动作集
         self.action_manager.restore_actions()

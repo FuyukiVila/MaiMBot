@@ -1,7 +1,6 @@
 from typing import List, Any, Dict
 from src.common.logger import get_logger
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.actions.base_action import ActionActivationType, ChatMode
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 from src.config.config import global_config
 import random
@@ -57,7 +56,7 @@ class NormalChatActionModifier:
             chat_context = chat_stream.context if hasattr(chat_stream, "context") else None
             if chat_context:
                 # 获取Normal模式下的可用动作（已经过滤了mode_enable）
-                current_using_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+                current_using_actions = self.action_manager.get_using_actions_for_mode("normal")
                 # print(f"current_using_actions: {current_using_actions}")
                 for action_name in current_using_actions.keys():
                     if action_name in self.all_actions:
@@ -100,7 +99,7 @@ class NormalChatActionModifier:
                 chat_content = ""
 
         # 获取当前Normal模式下的动作集进行激活判定
-        current_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+        current_actions = self.action_manager.get_using_actions_for_mode("normal")
 
         # print(f"current_actions: {current_actions}")
         # print(f"chat_content: {chat_content}")
@@ -150,7 +149,7 @@ class NormalChatActionModifier:
             logger.info(f"{self.log_prefix} 动作调整完成: {' | '.join(reasons)}")
 
         # 获取最终的Normal模式可用动作并记录
-        final_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+        final_actions = self.action_manager.get_using_actions_for_mode("normal")
         logger.debug(f"{self.log_prefix} 当前Normal模式可用动作: {list(final_actions.keys())}")
 
     async def _apply_normal_activation_filtering(
@@ -184,13 +183,14 @@ class NormalChatActionModifier:
 
         for action_name, action_info in actions_with_info.items():
             # 使用normal_activation_type
-            activation_type = action_info.get("normal_activation_type", ActionActivationType.ALWAYS)
+            activation_type = action_info.get("normal_activation_type", "always")
 
-            if activation_type == ActionActivationType.ALWAYS:
+            # 现在统一是字符串格式的激活类型值
+            if activation_type == "always":
                 always_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.RANDOM or activation_type == ActionActivationType.LLM_JUDGE:
+            elif activation_type == "random" or activation_type == "llm_judge":
                 random_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.KEYWORD:
+            elif activation_type == "keyword":
                 keyword_actions[action_name] = action_info
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
@@ -278,7 +278,7 @@ class NormalChatActionModifier:
 
     def get_available_actions_count(self) -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
-        current_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+        current_actions = self.action_manager.get_using_actions_for_mode("normal")
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)

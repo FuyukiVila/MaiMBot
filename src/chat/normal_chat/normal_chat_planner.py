@@ -7,7 +7,6 @@ from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import get_individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.actions.base_action import ChatMode
 from src.chat.message_receive.message import MessageThinking
 from json_repair import repair_json
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
@@ -100,7 +99,7 @@ class NormalChatPlanner:
             self_info = name_block + personality_block + identity_block
 
             # 获取当前可用的动作，使用Normal模式过滤
-            current_available_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+            current_available_actions = self.action_manager.get_using_actions_for_mode("normal")
 
             # 注意：动作的激活判定现在在 normal_chat_action_modifier 中完成
             # 这里直接使用经过 action_modifier 处理后的最终动作集

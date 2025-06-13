@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Type, Any
-from src.chat.actions.base_action import BaseAction, _ACTION_REGISTRY
+from src.plugin_system.base.base_action import BaseAction
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
@@ -75,8 +75,8 @@ class PluginActionWrapper(BaseAction):
         self.parallel_action = getattr(self.plugin_action, "parallel_action", True)
         self.enable_plugin = True
 
-    async def handle_action(self) -> tuple[bool, str]:
-        """兼容旧系统的动作处理接口，委托给插件Action的execute方法"""
+    async def execute(self) -> tuple[bool, str]:
+        """实现抽象方法execute，委托给插件Action的execute方法"""
         try:
             # 调用插件Action的execute方法
             success, response = await self.plugin_action.execute()
@@ -87,6 +87,10 @@ class PluginActionWrapper(BaseAction):
         except Exception as e:
             logger.error(f"插件Action {self.action_name} 执行异常: {e}")
             return False, f"插件Action执行失败: {str(e)}"
+
+    async def handle_action(self) -> tuple[bool, str]:
+        """兼容旧系统的动作处理接口，委托给execute方法"""
+        return await self.execute()
 
 
 class ActionManager:
@@ -121,8 +125,13 @@ class ActionManager:
         加载所有通过装饰器注册的动作
         """
         try:
-            # 从_ACTION_REGISTRY获取所有已注册动作
-            for action_name, action_class in _ACTION_REGISTRY.items():
+            # 从组件注册中心获取所有已注册的action
+            from src.plugin_system.core.component_registry import component_registry
+
+            action_registry = component_registry.get_action_registry()
+
+            # 从action_registry获取所有已注册动作
+            for action_name, action_class in action_registry.items():
                 # 获取动作相关信息
 
                 # 不读取插件动作和基类
@@ -136,16 +145,30 @@ class ActionManager:
                 is_enabled: bool = getattr(action_class, "enable_plugin", True)
 
                 # 获取激活类型相关属性
-                focus_activation_type: str = getattr(action_class, "focus_activation_type", "always")
-                normal_activation_type: str = getattr(action_class, "normal_activation_type", "always")
+                focus_activation_type_attr = getattr(action_class, "focus_activation_type", "always")
+                normal_activation_type_attr = getattr(action_class, "normal_activation_type", "always")
 
+                # 处理枚举值，提取.value
+                focus_activation_type = (
+                    focus_activation_type_attr.value
+                    if hasattr(focus_activation_type_attr, "value")
+                    else str(focus_activation_type_attr)
+                )
+                normal_activation_type = (
+                    normal_activation_type_attr.value
+                    if hasattr(normal_activation_type_attr, "value")
+                    else str(normal_activation_type_attr)
+                )
+
+                # 其他属性
                 random_probability: float = getattr(action_class, "random_activation_probability", 0.3)
                 llm_judge_prompt: str = getattr(action_class, "llm_judge_prompt", "")
                 activation_keywords: list[str] = getattr(action_class, "activation_keywords", [])
                 keyword_case_sensitive: bool = getattr(action_class, "keyword_case_sensitive", False)
 
-                # 获取模式启用属性
-                mode_enable: str = getattr(action_class, "mode_enable", "all")
+                # 处理模式启用属性
+                mode_enable_attr = getattr(action_class, "mode_enable", "all")
+                mode_enable = mode_enable_attr.value if hasattr(mode_enable_attr, "value") else str(mode_enable_attr)
 
                 # 获取并行执行属性
                 parallel_action: bool = getattr(action_class, "parallel_action", False)
@@ -186,11 +209,11 @@ class ActionManager:
         """
         加载所有插件目录中的动作
 
-        注意：插件动作的实际导入已经在main.py中完成，这里只需要从_ACTION_REGISTRY获取
+        注意：插件动作的实际导入已经在main.py中完成，这里只需要从action_registry获取
         同时也从新插件系统的component_registry获取Action组件
         """
         try:
-            # 从旧的_ACTION_REGISTRY获取插件动作
+            # 从旧的action_registry获取插件动作
             self._load_registered_actions()
             logger.debug("从旧注册表加载插件动作成功")
 
@@ -311,7 +334,10 @@ class ActionManager:
             )
 
         # 旧系统的动作创建逻辑
-        handler_class = _ACTION_REGISTRY.get(action_name)
+        from src.plugin_system.core.component_registry import component_registry
+
+        action_registry = component_registry.get_action_registry()
+        handler_class = action_registry.get(action_name)
         if not handler_class:
             logger.warning(f"未注册的动作类型: {action_name}")
             return None
@@ -430,7 +456,11 @@ class ActionManager:
         """
         filtered_actions = {}
 
+        # print(self._using_actions)
+
         for action_name, action_info in self._using_actions.items():
+            # print(f"action_info: {action_info}")
+            # print(f"action_name: {action_name}")
             action_mode = action_info.get("mode_enable", "all")
 
             # 检查动作是否在当前模式下启用
@@ -575,4 +605,7 @@ class ActionManager:
         Returns:
             Optional[Type[BaseAction]]: 动作处理器类，如果不存在则返回None
         """
-        return _ACTION_REGISTRY.get(action_name)
+        from src.plugin_system.core.component_registry import component_registry
+
+        action_registry = component_registry.get_action_registry()
+        return action_registry.get(action_name)
