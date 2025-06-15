@@ -184,12 +184,13 @@ class NormalChatActionModifier:
         activated_actions = {}
 
         # 特殊处理 change_to_focus_chat 动作
-        if "change_to_focus_chat" in actions_with_info:
-            # 检查是否满足切换到focus模式的条件
-            if await self._check_should_switch_to_focus(recent_replies):
-                activated_actions["change_to_focus_chat"] = actions_with_info["change_to_focus_chat"]
-                logger.debug(f"{self.log_prefix} 特殊激活 change_to_focus_chat 动作，原因: 满足切换到focus模式条件")
-                return activated_actions
+        if global_config.chat.chat_mode == "auto":
+            if "change_to_focus_chat" in actions_with_info:
+                # 检查是否满足切换到focus模式的条件
+                if await self._check_should_switch_to_focus(recent_replies):
+                    activated_actions["change_to_focus_chat"] = actions_with_info["change_to_focus_chat"]
+                    logger.debug(f"{self.log_prefix} 特殊激活 change_to_focus_chat 动作，原因: 满足切换到focus模式条件")
+                    return activated_actions
 
         # 分类处理不同激活类型的actions
         always_actions = {}
@@ -308,7 +309,7 @@ class NormalChatActionModifier:
         if container:
             thinking_count = sum(1 for msg in container.messages if isinstance(msg, MessageThinking))
             print(f"thinking_count: {thinking_count}")
-            if thinking_count >= 4 / global_config.chat.auto_focus_threshold:  # 如果堆积超过3条思考消息
+            if thinking_count >= 4 * global_config.chat.auto_focus_threshold:  # 如果堆积超过3条思考消息
                 logger.debug(f"{self.log_prefix} 检测到思考消息堆积({thinking_count}条)，切换到focus模式")
                 return True
 

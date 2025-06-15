@@ -3,6 +3,11 @@ import logging.handlers
 from pathlib import Path
 from typing import Callable, Optional
 import json
+import gzip
+import shutil
+import threading
+import time
+from datetime import datetime, timedelta
 
 import structlog
 import toml
@@ -10,6 +15,132 @@ import toml
 # 创建logs目录
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
+
+# 全局handler实例，避免重复创建
+_file_handler = None
+_console_handler = None
+
+
+def get_file_handler():
+    """获取文件handler单例"""
+    global _file_handler
+    if _file_handler is None:
+        # 使用带压缩功能的handler，使用硬编码的默认值
+        _file_handler = CompressedRotatingFileHandler(
+            LOG_DIR / "app.log.jsonl",
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=5,
+            encoding="utf-8",
+            compress=True,
+            compress_level=6,
+        )
+        # 设置文件handler的日志级别
+        file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
+        _file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
+    return _file_handler
+
+
+def get_console_handler():
+    """获取控制台handler单例"""
+    global _console_handler
+    if _console_handler is None:
+        _console_handler = logging.StreamHandler()
+        # 设置控制台handler的日志级别
+        console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
+        _console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
+    return _console_handler
+
+
+class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    """支持压缩的轮转文件处理器"""
+
+    def __init__(self, filename, maxBytes=0, backupCount=0, encoding=None, compress=True, compress_level=6):
+        super().__init__(filename, "a", maxBytes, backupCount, encoding)
+        self.compress = compress
+        self.compress_level = compress_level
+
+    def doRollover(self):
+        """执行日志轮转，并压缩旧文件"""
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+
+        # 如果有备份文件数量限制
+        if self.backupCount > 0:
+            # 删除最旧的压缩文件
+            old_gz = f"{self.baseFilename}.{self.backupCount}.gz"
+            old_file = f"{self.baseFilename}.{self.backupCount}"
+
+            if Path(old_gz).exists():
+                Path(old_gz).unlink()
+            if Path(old_file).exists():
+                Path(old_file).unlink()
+
+            # 重命名现有的备份文件
+            for i in range(self.backupCount - 1, 0, -1):
+                source_gz = f"{self.baseFilename}.{i}.gz"
+                dest_gz = f"{self.baseFilename}.{i + 1}.gz"
+                source_file = f"{self.baseFilename}.{i}"
+                dest_file = f"{self.baseFilename}.{i + 1}"
+
+                if Path(source_gz).exists():
+                    Path(source_gz).rename(dest_gz)
+                elif Path(source_file).exists():
+                    Path(source_file).rename(dest_file)
+
+            # 处理当前日志文件
+            dest_file = f"{self.baseFilename}.1"
+            if Path(self.baseFilename).exists():
+                Path(self.baseFilename).rename(dest_file)
+
+                # 在后台线程中压缩文件
+                if self.compress:
+                    threading.Thread(target=self._compress_file, args=(dest_file,), daemon=True).start()
+
+        # 重新创建日志文件
+        if not self.delay:
+            self.stream = self._open()
+
+    def _compress_file(self, filepath):
+        """在后台压缩文件"""
+        try:
+            source_path = Path(filepath)
+            if not source_path.exists():
+                return
+
+            compressed_path = Path(f"{filepath}.gz")
+
+            with open(source_path, "rb") as f_in:
+                with gzip.open(compressed_path, "wb", compresslevel=self.compress_level) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+            # 删除原文件
+            source_path.unlink()
+
+            # 记录压缩完成，使用标准print避免循环日志
+            if source_path.exists():
+                original_size = source_path.stat().st_size
+            else:
+                original_size = 0
+            compressed_size = compressed_path.stat().st_size
+            ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+            print(f"[日志压缩] {source_path.name} -> {compressed_path.name} (压缩率: {ratio:.1f}%)")
+
+        except Exception as e:
+            print(f"[日志压缩] 压缩失败 {filepath}: {e}")
+
+
+def close_handlers():
+    """安全关闭所有handler"""
+    global _file_handler, _console_handler
+
+    if _file_handler:
+        _file_handler.close()
+        _file_handler = None
+
+    if _console_handler:
+        _console_handler.close()
+        _console_handler = None
 
 
 # 读取日志配置
@@ -20,7 +151,9 @@ def load_log_config():
         "date_style": "Y-m-d H:i:s",
         "log_level_style": "lite",
         "color_text": "title",
-        "log_level": "INFO",
+        "log_level": "INFO",  # 全局日志级别（向下兼容）
+        "console_log_level": "INFO",  # 控制台日志级别
+        "file_log_level": "DEBUG",  # 文件日志级别
         "suppress_libraries": [],
         "library_log_levels": {},
     }
@@ -61,10 +194,17 @@ def get_timestamp_format():
 
 def configure_third_party_loggers():
     """配置第三方库的日志级别"""
-    # 设置全局日志级别
-    global_log_level = LOG_CONFIG.get("log_level", "INFO")
+    # 设置根logger级别为所有handler中最低的级别，确保所有日志都能被捕获
+    console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
+    file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
+
+    # 获取最低级别（DEBUG < INFO < WARNING < ERROR < CRITICAL）
+    console_level_num = getattr(logging, console_level.upper(), logging.INFO)
+    file_level_num = getattr(logging, file_level.upper(), logging.INFO)
+    min_level = min(console_level_num, file_level_num)
+
     root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, global_log_level.upper(), logging.INFO))
+    root_logger.setLevel(min_level)
 
     # 完全屏蔽的库
     suppress_libraries = LOG_CONFIG.get("suppress_libraries", [])
@@ -117,19 +257,23 @@ def reconfigure_existing_loggers():
             # 强制清除并重新设置所有handler
             original_handlers = logger_obj.handlers[:]
             for handler in original_handlers:
+                # 安全关闭handler
+                if hasattr(handler, "close"):
+                    handler.close()
                 logger_obj.removeHandler(handler)
 
             # 如果logger没有handler，让它使用根logger的handler（propagate=True）
             if not logger_obj.handlers:
                 logger_obj.propagate = True
 
-            # 如果logger有自己的handler，重新配置它们
+            # 如果logger有自己的handler，重新配置它们（避免重复创建文件handler）
             for handler in original_handlers:
                 if isinstance(handler, logging.handlers.RotatingFileHandler):
-                    handler.setFormatter(file_formatter)
+                    # 不重新添加，让它使用根logger的文件handler
+                    continue
                 elif isinstance(handler, logging.StreamHandler):
                     handler.setFormatter(console_formatter)
-                logger_obj.addHandler(handler)
+                    logger_obj.addHandler(handler)
 
 
 # 定义模块颜色映射
@@ -377,20 +521,14 @@ class ModuleColoredConsoleRenderer:
 
 
 # 配置标准logging以支持文件输出和压缩
+# 使用单例handler避免重复创建
+file_handler = get_file_handler()
+console_handler = get_console_handler()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
-    handlers=[
-        # 带压缩的轮转文件处理器
-        logging.handlers.RotatingFileHandler(
-            LOG_DIR / "app.log.jsonl",
-            maxBytes=10 * 1024 * 1024,  # 10MB
-            backupCount=5,
-            encoding="utf-8",
-        ),
-        # 控制台处理器
-        logging.StreamHandler(),
-    ],
+    handlers=[file_handler, console_handler],
 )
 
 
@@ -462,23 +600,17 @@ def _immediate_setup():
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
+    # 使用单例handler避免重复创建
+    file_handler = get_file_handler()
+    console_handler = get_console_handler()
+
     # 重新添加配置好的handler
-    root_logger.addHandler(
-        logging.handlers.RotatingFileHandler(
-            LOG_DIR / "app.log.jsonl",
-            maxBytes=10 * 1024 * 1024,
-            backupCount=5,
-            encoding="utf-8",
-        )
-    )
-    root_logger.addHandler(logging.StreamHandler())
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
 
     # 设置格式化器
-    for handler in root_logger.handlers:
-        if isinstance(handler, logging.handlers.RotatingFileHandler):
-            handler.setFormatter(file_formatter)
-        else:
-            handler.setFormatter(console_formatter)
+    file_handler.setFormatter(file_formatter)
+    console_handler.setFormatter(console_formatter)
 
     # 配置第三方库日志
     configure_third_party_loggers()
@@ -490,23 +622,26 @@ def _immediate_setup():
 # 立即执行配置
 _immediate_setup()
 
-raw_logger = structlog.get_logger()
+raw_logger: structlog.stdlib.BoundLogger = structlog.get_logger()
 
 binds: dict[str, Callable] = {}
 
 
-def get_logger(name: Optional[str]):
+def get_logger(name: Optional[str]) -> structlog.stdlib.BoundLogger:
     """获取logger实例，支持按名称绑定"""
     if name is None:
         return raw_logger
     logger = binds.get(name)
     if logger is None:
-        binds[name] = logger = structlog.get_logger(name).bind(logger_name=name)
+        logger: structlog.stdlib.BoundLogger = structlog.get_logger(name).bind(logger_name=name)
+        binds[name] = logger
     return logger
 
 
 def configure_logging(
     level: str = "INFO",
+    console_level: str = None,
+    file_level: str = None,
     max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
     log_dir: str = "logs",
@@ -516,15 +651,31 @@ def configure_logging(
     log_path.mkdir(exist_ok=True)
 
     # 更新文件handler配置
-    root_logger = logging.getLogger()
-    for handler in root_logger.handlers:
-        if isinstance(handler, logging.handlers.RotatingFileHandler):
-            handler.maxBytes = max_bytes
-            handler.backupCount = backup_count
-            handler.baseFilename = str(log_path / "app.log.jsonl")
+    file_handler = get_file_handler()
+    if file_handler:
+        file_handler.maxBytes = max_bytes
+        file_handler.backupCount = backup_count
+        file_handler.baseFilename = str(log_path / "app.log.jsonl")
 
-    # 设置日志级别
-    root_logger.setLevel(getattr(logging, level.upper()))
+        # 更新文件handler日志级别
+        if file_level:
+            file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
+
+    # 更新控制台handler日志级别
+    console_handler = get_console_handler()
+    if console_handler and console_level:
+        console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
+
+    # 设置根logger日志级别为最低级别
+    if console_level or file_level:
+        console_level_num = getattr(logging, (console_level or level).upper(), logging.INFO)
+        file_level_num = getattr(logging, (file_level or level).upper(), logging.INFO)
+        min_level = min(console_level_num, file_level_num)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(min_level)
+    else:
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, level.upper()))
 
 
 def set_module_color(module_name: str, color_code: str):
@@ -546,6 +697,17 @@ def reload_log_config():
     """重新加载日志配置"""
     global LOG_CONFIG
     LOG_CONFIG = load_log_config()
+
+    # 重新设置handler的日志级别
+    file_handler = get_file_handler()
+    if file_handler:
+        file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
+        file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
+
+    console_handler = get_console_handler()
+    if console_handler:
+        console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
+        console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
 
     # 重新配置console渲染器
     root_logger = logging.getLogger()
@@ -578,8 +740,66 @@ def get_log_config():
     return LOG_CONFIG.copy()
 
 
+def set_console_log_level(level: str):
+    """设置控制台日志级别
+
+    Args:
+        level: 日志级别 ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+    """
+    global LOG_CONFIG
+    LOG_CONFIG["console_log_level"] = level.upper()
+
+    console_handler = get_console_handler()
+    if console_handler:
+        console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
+
+    # 重新设置root logger级别
+    configure_third_party_loggers()
+
+    logger = get_logger("logger")
+    logger.info(f"控制台日志级别已设置为: {level.upper()}")
+
+
+def set_file_log_level(level: str):
+    """设置文件日志级别
+
+    Args:
+        level: 日志级别 ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+    """
+    global LOG_CONFIG
+    LOG_CONFIG["file_log_level"] = level.upper()
+
+    file_handler = get_file_handler()
+    if file_handler:
+        file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
+
+    # 重新设置root logger级别
+    configure_third_party_loggers()
+
+    logger = get_logger("logger")
+    logger.info(f"文件日志级别已设置为: {level.upper()}")
+
+
+def get_current_log_levels():
+    """获取当前的日志级别设置"""
+    file_handler = get_file_handler()
+    console_handler = get_console_handler()
+
+    file_level = logging.getLevelName(file_handler.level) if file_handler else "UNKNOWN"
+    console_level = logging.getLevelName(console_handler.level) if console_handler else "UNKNOWN"
+
+    return {
+        "console_level": console_level,
+        "file_level": file_level,
+        "root_level": logging.getLevelName(logging.getLogger().level),
+    }
+
+
 def force_reset_all_loggers():
     """强制重置所有logger，解决格式不一致问题"""
+    # 先关闭现有的handler
+    close_handlers()
+
     # 清除所有现有的logger配置
     logging.getLogger().manager.loggerDict.clear()
 
@@ -587,27 +807,27 @@ def force_reset_all_loggers():
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
 
+    # 使用单例handler避免重复创建
+    file_handler = get_file_handler()
+    console_handler = get_console_handler()
+
     # 重新添加我们的handler
-    root_logger.addHandler(
-        logging.handlers.RotatingFileHandler(
-            LOG_DIR / "app.log.jsonl",
-            maxBytes=10 * 1024 * 1024,
-            backupCount=5,
-            encoding="utf-8",
-        )
-    )
-    root_logger.addHandler(logging.StreamHandler())
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
 
     # 设置格式化器
-    for handler in root_logger.handlers:
-        if isinstance(handler, logging.handlers.RotatingFileHandler):
-            handler.setFormatter(file_formatter)
-        else:
-            handler.setFormatter(console_formatter)
+    file_handler.setFormatter(file_formatter)
+    console_handler.setFormatter(console_formatter)
 
-    # 设置级别
-    global_log_level = LOG_CONFIG.get("log_level", "INFO")
-    root_logger.setLevel(getattr(logging, global_log_level.upper(), logging.INFO))
+    # 设置根logger级别为所有handler中最低的级别
+    console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
+    file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
+
+    console_level_num = getattr(logging, console_level.upper(), logging.INFO)
+    file_level_num = getattr(logging, file_level.upper(), logging.INFO)
+    min_level = min(console_level_num, file_level_num)
+
+    root_logger.setLevel(min_level)
 
 
 def initialize_logging():
@@ -620,10 +840,19 @@ def initialize_logging():
     configure_third_party_loggers()
     reconfigure_existing_loggers()
 
+    # 启动日志清理任务
+    start_log_cleanup_task()
+
     # 输出初始化信息
     logger = get_logger("logger")
-    log_level = LOG_CONFIG.get("log_level", "INFO")
-    logger.info(f"日志系统已重新初始化，日志级别: {log_level}，所有logger已统一配置")
+    console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
+    file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
+
+    logger.info("日志系统已重新初始化:")
+    logger.info(f"  - 控制台级别: {console_level}")
+    logger.info(f"  - 文件级别: {file_level}")
+    logger.info("  - 压缩功能: 启用")
+    logger.info("  - 自动清理: 30天前的日志")
 
 
 def force_initialize_logging():
@@ -642,8 +871,9 @@ def force_initialize_logging():
 
     # 输出初始化信息
     logger = get_logger("logger")
-    log_level = LOG_CONFIG.get("log_level", "INFO")
-    logger.info(f"日志系统已强制重新初始化，日志级别: {log_level}，所有logger格式已统一")
+    console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
+    file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
+    logger.info(f"日志系统已强制重新初始化，控制台级别: {console_level}，文件级别: {file_level}，所有logger格式已统一")
 
 
 def show_module_colors():
@@ -677,3 +907,110 @@ def format_json_for_logging(data, indent=2, ensure_ascii=False):
     else:
         # 如果是对象，直接格式化
         return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
+
+
+def cleanup_old_logs():
+    """清理过期的日志文件"""
+    try:
+        cleanup_days = 30  # 硬编码30天
+        cutoff_date = datetime.now() - timedelta(days=cleanup_days)
+        deleted_count = 0
+        deleted_size = 0
+
+        # 遍历日志目录
+        for log_file in LOG_DIR.glob("*.log*"):
+            try:
+                file_time = datetime.fromtimestamp(log_file.stat().st_mtime)
+                if file_time < cutoff_date:
+                    file_size = log_file.stat().st_size
+                    log_file.unlink()
+                    deleted_count += 1
+                    deleted_size += file_size
+            except Exception as e:
+                logger = get_logger("logger")
+                logger.warning(f"清理日志文件 {log_file} 时出错: {e}")
+
+        if deleted_count > 0:
+            logger = get_logger("logger")
+            logger.info(f"清理了 {deleted_count} 个过期日志文件，释放空间 {deleted_size / 1024 / 1024:.2f} MB")
+
+    except Exception as e:
+        logger = get_logger("logger")
+        logger.error(f"清理旧日志文件时出错: {e}")
+
+
+def start_log_cleanup_task():
+    """启动日志清理任务"""
+
+    def cleanup_task():
+        while True:
+            time.sleep(24 * 60 * 60)  # 每24小时执行一次
+            cleanup_old_logs()
+
+    cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
+    cleanup_thread.start()
+
+    logger = get_logger("logger")
+    logger.info("已启动日志清理任务，将自动清理30天前的日志文件")
+
+
+def get_log_stats():
+    """获取日志文件统计信息"""
+    stats = {"total_files": 0, "total_size": 0, "compressed_files": 0, "uncompressed_files": 0, "files": []}
+
+    try:
+        if not LOG_DIR.exists():
+            return stats
+
+        for log_file in LOG_DIR.glob("*.log*"):
+            file_info = {
+                "name": log_file.name,
+                "size": log_file.stat().st_size,
+                "modified": datetime.fromtimestamp(log_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "compressed": log_file.suffix == ".gz",
+            }
+
+            stats["files"].append(file_info)
+            stats["total_files"] += 1
+            stats["total_size"] += file_info["size"]
+
+            if file_info["compressed"]:
+                stats["compressed_files"] += 1
+            else:
+                stats["uncompressed_files"] += 1
+
+        # 按修改时间排序
+        stats["files"].sort(key=lambda x: x["modified"], reverse=True)
+
+    except Exception as e:
+        logger = get_logger("logger")
+        logger.error(f"获取日志统计信息时出错: {e}")
+
+    return stats
+
+
+def shutdown_logging():
+    """优雅关闭日志系统，释放所有文件句柄"""
+    logger = get_logger("logger")
+    logger.info("正在关闭日志系统...")
+
+    # 关闭所有handler
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        if hasattr(handler, "close"):
+            handler.close()
+        root_logger.removeHandler(handler)
+
+    # 关闭全局handler
+    close_handlers()
+
+    # 关闭所有其他logger的handler
+    logger_dict = logging.getLogger().manager.loggerDict
+    for _name, logger_obj in logger_dict.items():
+        if isinstance(logger_obj, logging.Logger):
+            for handler in logger_obj.handlers[:]:
+                if hasattr(handler, "close"):
+                    handler.close()
+                logger_obj.removeHandler(handler)
+
+    logger.info("日志系统已关闭")

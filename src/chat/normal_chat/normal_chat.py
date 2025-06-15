@@ -21,6 +21,9 @@ from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
+from src.person_info.person_info import PersonInfoManager
+from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
+from src.person_info.relationship_manager import get_relationship_manager
 
 willing_manager = get_willing_manager()
 
@@ -63,6 +66,9 @@ class NormalChat:
         # 记录最近的回复内容，每项包含: {time, user_message, response, is_mentioned, is_reference_reply}
         self.recent_replies = []
         self.max_replies_history = 20  # 最多保存最近20条回复记录
+
+        # 添加engaging_person统计
+        self.engaging_persons = {}  # person_id -> {first_time, last_time, receive_count, reply_count, relation_built}
 
         # 添加回调函数，用于在满足条件时通知切换到focus_chat模式
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
@@ -153,64 +159,121 @@ class NormalChat:
         后台任务方法，轮询当前实例关联chat的兴趣消息
         通常由start_monitoring_interest()启动
         """
-        while True:
-            try:
-                async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
-                    await asyncio.sleep(0.5)  # 每秒检查一次
-                    # 检查任务是否已被取消
-                    if self._chat_task is None or self._chat_task.cancelled():
-                        logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
+        logger.debug(f"[{self.stream_name}] 兴趣监控任务开始")
+
+        try:
+            while True:
+                # 第一层检查：立即检查取消和停用状态
+                if self._disabled:
+                    logger.info(f"[{self.stream_name}] 检测到停用标志，退出兴趣监控")
+                    break
+
+                # 检查当前任务是否已被取消
+                current_task = asyncio.current_task()
+                if current_task and current_task.cancelled():
+                    logger.info(f"[{self.stream_name}] 当前任务已被取消，退出")
+                    break
+
+                try:
+                    # 短暂等待，让出控制权
+                    await asyncio.sleep(0.1)
+
+                    # 第二层检查：睡眠后再次检查状态
+                    if self._disabled:
+                        logger.info(f"[{self.stream_name}] 睡眠后检测到停用标志，退出")
                         break
 
+                    # 获取待处理消息
                     items_to_process = list(self.interest_dict.items())
                     if not items_to_process:
+                        # 没有消息时继续下一轮循环
                         continue
 
-                    # 并行处理兴趣消息
-                    async def process_single_message(msg_id, message, interest_value, is_mentioned):
-                        """处理单个兴趣消息"""
-                        try:
-                            # 处理消息
-                            if time.time() - self.start_time > 300:
-                                self.adjust_reply_frequency(duration=300 / 60)
-                            else:
-                                self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
+                    # 第三层检查：在处理消息前最后检查一次
+                    if self._disabled:
+                        logger.info(f"[{self.stream_name}] 处理消息前检测到停用标志，退出")
+                        break
 
-                            await self.normal_response(
-                                message=message,
-                                is_mentioned=is_mentioned,
-                                interested_rate=interest_value * self.willing_amplifier,
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}"
-                            )
-                        finally:
-                            self.interest_dict.pop(msg_id, None)
+                    # 使用异步上下文管理器处理消息
+                    try:
+                        async with global_prompt_manager.async_message_scope(
+                            self.chat_stream.context.get_template_name()
+                        ):
+                            # 在上下文内部再次检查取消状态
+                            if self._disabled:
+                                logger.info(f"[{self.stream_name}] 在处理上下文中检测到停止信号，退出")
+                                break
 
-                    # 创建并行任务列表
-                    tasks = []
-                    for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                        task = process_single_message(msg_id, message, interest_value, is_mentioned)
-                        tasks.append(task)
+                            # 并行处理兴趣消息
+                            async def process_single_message(msg_id, message, interest_value, is_mentioned):
+                                """处理单个兴趣消息"""
+                                try:
+                                    # 在处理每个消息前检查停止状态
+                                    if self._disabled:
+                                        logger.debug(f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}")
+                                        return
 
-                    # 并行执行所有任务，限制并发数量避免资源过度消耗
-                    if tasks:
-                        # 使用信号量控制并发数，最多同时处理5个消息
-                        semaphore = asyncio.Semaphore(5)
+                                    # 处理消息
+                                    if time.time() - self.start_time > 300:
+                                        self.adjust_reply_frequency(duration=300 / 60)
+                                    else:
+                                        self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
 
-                        async def limited_process(task):
-                            async with semaphore:
-                                await task
+                                    await self.normal_response(
+                                        message=message,
+                                        is_mentioned=is_mentioned,
+                                        interested_rate=interest_value * self.willing_amplifier,
+                                    )
+                                except asyncio.CancelledError:
+                                    logger.debug(f"[{self.stream_name}] 处理消息 {msg_id} 时被取消")
+                                    raise  # 重新抛出取消异常
+                                except Exception as e:
+                                    logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}")
+                                    # 不打印完整traceback，避免日志污染
+                                finally:
+                                    # 无论如何都要清理消息
+                                    self.interest_dict.pop(msg_id, None)
 
-                        limited_tasks = [limited_process(task) for task in tasks]
-                        await asyncio.gather(*limited_tasks, return_exceptions=True)
-            except asyncio.CancelledError:
-                logger.info(f"[{self.stream_name}] 兴趣监控任务被取消")
-                break
-            except Exception as e:
-                logger.error(f"[{self.stream_name}] 兴趣监控任务出错: {e}\n{traceback.format_exc()}")
-                await asyncio.sleep(1)  # 出错后等待一秒再继续
+                            # 创建并行任务列表
+                            tasks = []
+                            for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                                task = process_single_message(msg_id, message, interest_value, is_mentioned)
+                                tasks.append(task)
+
+                            # 并行执行所有任务，限制并发数量避免资源过度消耗
+                            if tasks:
+                                # 使用信号量控制并发数，最多同时处理5个消息
+                                semaphore = asyncio.Semaphore(5)
+
+                                async def limited_process(task, sem):
+                                    async with sem:
+                                        await task
+
+                                limited_tasks = [limited_process(task, semaphore) for task in tasks]
+                                await asyncio.gather(*limited_tasks, return_exceptions=True)
+
+                    except asyncio.CancelledError:
+                        logger.info(f"[{self.stream_name}] 处理上下文时任务被取消")
+                        break
+                    except Exception as e:
+                        logger.error(f"[{self.stream_name}] 处理上下文时出错: {e}")
+                        # 出错后短暂等待，避免快速重试
+                        await asyncio.sleep(0.5)
+
+                except asyncio.CancelledError:
+                    logger.info(f"[{self.stream_name}] 主循环中任务被取消")
+                    break
+                except Exception as e:
+                    logger.error(f"[{self.stream_name}] 主循环出错: {e}")
+                    # 出错后等待一秒再继续
+                    await asyncio.sleep(1.0)
+
+        except asyncio.CancelledError:
+            logger.info(f"[{self.stream_name}] 兴趣监控任务被取消")
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 兴趣监控任务严重错误: {e}")
+        finally:
+            logger.debug(f"[{self.stream_name}] 兴趣监控任务结束")
 
     # 改为实例方法, 移除 chat 参数
     async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
@@ -218,6 +281,12 @@ class NormalChat:
         if self._disabled:
             logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
             return
+
+        # 更新engaging_persons统计信息
+        self._update_engaging_person_stats(message, is_reply=False)
+
+        # 检查是否有用户满足关系构建条件
+        asyncio.create_task(self._check_relation_building_conditions())
 
         timing_results = {}
         reply_probability = (
@@ -258,8 +327,6 @@ class NormalChat:
             await willing_manager.before_generate_reply_handle(message.message_info.message_id)
 
             thinking_id = await self._create_thinking_message(message)
-
-            logger.debug(f"[{self.stream_name}] 创建捕捉器，thinking_id:{thinking_id}")
 
             # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
             available_actions = None
@@ -410,6 +477,9 @@ class NormalChat:
 
             # 检查 first_bot_msg 是否为 None (例如思考消息已被移除的情况)
             if first_bot_msg:
+                # 更新engaging_persons统计信息 - 标记为回复
+                self._update_engaging_person_stats(message, is_reply=True)
+
                 # 记录回复信息到最近回复列表中
                 reply_info = {
                     "time": time.time(),
@@ -459,60 +529,112 @@ class NormalChat:
     # 改为实例方法, 移除 chat 参数
 
     async def start_chat(self):
-        """启动聊天任务。"""  # Ensure initialized before starting tasks
-        self._disabled = False  # 启动时重置停用标志
+        """启动聊天任务。"""
+        logger.debug(f"[{self.stream_name}] 开始启动聊天任务")
 
-        if self._chat_task is None or self._chat_task.done():
-            # logger.info(f"[{self.stream_name}] 开始处理兴趣消息...")
-            polling_task = asyncio.create_task(self._reply_interested_message())
-            polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
-            self._chat_task = polling_task
-        else:
+        # 重置停用标志
+        self._disabled = False
+
+        # 检查是否已有运行中的任务
+        if self._chat_task and not self._chat_task.done():
             logger.info(f"[{self.stream_name}] 聊天轮询任务已在运行中。")
+            return
+
+        # 清理可能存在的已完成任务引用
+        if self._chat_task and self._chat_task.done():
+            self._chat_task = None
+
+        try:
+            logger.debug(f"[{self.stream_name}] 创建新的聊天轮询任务")
+            polling_task = asyncio.create_task(self._reply_interested_message())
+
+            # 设置回调
+            polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
+
+            # 保存任务引用
+            self._chat_task = polling_task
+
+            logger.debug(f"[{self.stream_name}] 聊天任务启动完成")
+
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 启动聊天任务失败: {e}")
+            self._chat_task = None
+            raise
 
     def _handle_task_completion(self, task: asyncio.Task):
         """任务完成回调处理"""
-        if task is not self._chat_task:
-            logger.warning(f"[{self.stream_name}] 收到未知任务回调")
-            return
         try:
-            if exc := task.exception():
-                logger.error(f"[{self.stream_name}] 任务异常: {exc}")
-                traceback.print_exc()
-        except asyncio.CancelledError:
-            logger.debug(f"[{self.stream_name}] 任务已取消")
+            # 简化回调逻辑，避免复杂的异常处理
+            logger.debug(f"[{self.stream_name}] 任务完成回调被调用")
+
+            # 检查是否是我们管理的任务
+            if task is not self._chat_task:
+                # 如果已经不是当前任务（可能在stop_chat中已被清空），直接返回
+                logger.debug(f"[{self.stream_name}] 回调的任务不是当前管理的任务")
+                return
+
+            # 清理任务引用
+            self._chat_task = None
+            logger.debug(f"[{self.stream_name}] 任务引用已清理")
+
+            # 简单记录任务状态，不进行复杂处理
+            if task.cancelled():
+                logger.debug(f"[{self.stream_name}] 任务已取消")
+            elif task.done():
+                try:
+                    # 尝试获取异常，但不抛出
+                    exc = task.exception()
+                    if exc:
+                        logger.error(f"[{self.stream_name}] 任务异常: {type(exc).__name__}: {exc}")
+                    else:
+                        logger.debug(f"[{self.stream_name}] 任务正常完成")
+                except Exception as e:
+                    # 获取异常时也可能出错，静默处理
+                    logger.debug(f"[{self.stream_name}] 获取任务异常时出错: {e}")
+
         except Exception as e:
-            logger.error(f"[{self.stream_name}] 回调处理错误: {e}")
-        finally:
-            if self._chat_task is task:
-                self._chat_task = None
-                logger.debug(f"[{self.stream_name}] 任务清理完成")
+            # 回调函数中的任何异常都要捕获，避免影响系统
+            logger.error(f"[{self.stream_name}] 任务完成回调处理出错: {e}")
+            # 确保任务引用被清理
+            self._chat_task = None
 
     # 改为实例方法, 移除 stream_id 参数
     async def stop_chat(self):
         """停止当前实例的兴趣监控任务。"""
-        self._disabled = True  # 停止时设置停用标志
-        if self._chat_task and not self._chat_task.done():
-            task = self._chat_task
-            logger.debug(f"[{self.stream_name}] 尝试取消normal聊天任务。")
-            task.cancel()
-            try:
-                # 添加超时机制，最多等待2秒
-                await asyncio.wait_for(task, timeout=2.0)
-            except asyncio.TimeoutError:
-                logger.warning(f"[{self.stream_name}] 等待任务取消超时，强制结束")
-            except asyncio.CancelledError:
-                logger.info(f"[{self.stream_name}] 结束一般聊天模式。")
-            except Exception as e:
-                # 回调函数 _handle_task_completion 会处理异常日志
-                logger.warning(f"[{self.stream_name}] 等待监控任务取消时捕获到异常 (可能已在回调中记录): {e}")
-            finally:
-                # 确保任务状态更新，即使等待出错 (回调函数也会尝试更新)
-                if self._chat_task is task:
-                    self._chat_task = None
+        logger.debug(f"[{self.stream_name}] 开始停止聊天任务")
 
-        # 清理所有未处理的思考消息
+        # 立即设置停用标志，防止新任务启动
+        self._disabled = True
+
+        # 如果没有运行中的任务，直接返回
+        if not self._chat_task or self._chat_task.done():
+            logger.debug(f"[{self.stream_name}] 没有运行中的任务，直接完成停止")
+            self._chat_task = None
+            return
+
+        # 保存任务引用并立即清空，避免回调中的循环引用
+        task_to_cancel = self._chat_task
+        self._chat_task = None
+
+        logger.debug(f"[{self.stream_name}] 取消聊天任务")
+
+        # 尝试优雅取消任务
+        task_to_cancel.cancel()
+
+        # 不等待任务完成，让它自然结束
+        # 这样可以避免等待过程中的潜在递归问题
+
+        # 异步清理思考消息，不阻塞当前流程
+        asyncio.create_task(self._cleanup_thinking_messages_async())
+
+        logger.debug(f"[{self.stream_name}] 聊天任务停止完成")
+
+    async def _cleanup_thinking_messages_async(self):
+        """异步清理思考消息，避免阻塞主流程"""
         try:
+            # 添加短暂延迟，让任务有时间响应取消
+            await asyncio.sleep(0.1)
+
             container = await message_manager.get_container(self.stream_id)
             if container:
                 # 查找并移除所有 MessageThinking 类型的消息
@@ -522,8 +644,8 @@ class NormalChat:
                         container.messages.remove(msg)
                     logger.info(f"[{self.stream_name}] 清理了 {len(thinking_messages)} 条未处理的思考消息。")
         except Exception as e:
-            logger.error(f"[{self.stream_name}] 清理思考消息时出错: {e}")
-            traceback.print_exc()
+            logger.error(f"[{self.stream_name}] 异步清理思考消息时出错: {e}")
+            # 不打印完整栈跟踪，避免日志污染
 
     # 获取最近回复记录的方法
     def get_recent_replies(self, limit: int = 10) -> List[dict]:
@@ -570,14 +692,14 @@ class NormalChat:
         if differ > 0.1:
             mapped = 1 + (differ - 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
-            logger.info(
+            logger.debug(
                 f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
             )
             self.willing_amplifier += mapped * 0.1  # 你可以根据实际需要调整系数
         elif differ < -0.1:
             mapped = 1 - (differ + 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
-            logger.info(
+            logger.debug(
                 f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
             )
             self.willing_amplifier -= mapped * 0.1
@@ -646,3 +768,147 @@ class NormalChat:
     def get_action_manager(self) -> ActionManager:
         """获取动作管理器实例"""
         return self.action_manager
+
+    def _update_engaging_person_stats(self, message: MessageRecv, is_reply: bool):
+        """更新engaging_persons统计信息"""
+        # 通过platform和user_id计算person_id
+        platform = message.message_info.platform
+        user_id = message.message_info.user_info.user_id
+        person_id = PersonInfoManager.get_person_id(platform, user_id)
+        current_time = time.time()
+
+        if person_id not in self.engaging_persons:
+            self.engaging_persons[person_id] = {
+                "first_time": current_time,
+                "last_time": current_time,
+                "receive_count": 0,
+                "reply_count": 0,
+                "relation_built": False,
+            }
+
+        if is_reply:
+            self.engaging_persons[person_id]["reply_count"] += 1
+            logger.debug(
+                f"[{self.stream_name}] 用户 {person_id} 回复次数更新: {self.engaging_persons[person_id]['reply_count']}"
+            )
+        else:
+            self.engaging_persons[person_id]["receive_count"] += 1
+            self.engaging_persons[person_id]["last_time"] = current_time
+            logger.debug(
+                f"[{self.stream_name}] 用户 {person_id} 消息次数更新: {self.engaging_persons[person_id]['receive_count']}"
+            )
+
+    async def _check_relation_building_conditions(self):
+        """检查engaging_persons中是否有满足关系构建条件的用户"""
+        current_time = time.time()
+
+        for person_id, stats in list(self.engaging_persons.items()):
+            # 计算时间差和消息数量
+            time_elapsed = current_time - stats["first_time"]
+            total_messages = self._get_total_messages_in_timerange(stats["first_time"], stats["last_time"])
+
+            print(f"person_id: {person_id}, total_messages: {total_messages}, time_elapsed: {time_elapsed}")
+
+            # 检查是否满足关系构建条件
+            should_build_relation = (
+                total_messages >= 50  # 50条消息必定满足
+                or (total_messages >= 35 and time_elapsed >= 600)  # 35条且10分钟
+                or (total_messages >= 25 and time_elapsed >= 1800)  # 25条且30分钟
+                or (total_messages >= 10 and time_elapsed >= 3600)  # 10条且1小时
+            )
+
+            if should_build_relation:
+                logger.info(
+                    f"[{self.stream_name}] 用户 {person_id} 满足关系构建条件。"
+                    f"消息数：{total_messages}，时长：{time_elapsed:.0f}秒，"
+                    f"收到消息：{stats['receive_count']}，回复次数：{stats['reply_count']}"
+                )
+
+                # 计算构建概率并决定是否构建
+                await self._evaluate_and_build_relation(person_id, stats, total_messages)
+
+                # 评估完成后移除该用户，重新开始统计
+                del self.engaging_persons[person_id]
+                logger.info(f"[{self.stream_name}] 用户 {person_id} 评估完成，已移除记录，将重新开始统计")
+
+    def _get_total_messages_in_timerange(self, start_time: float, end_time: float) -> int:
+        """获取指定时间范围内的总消息数量"""
+        try:
+            messages = get_raw_msg_by_timestamp_with_chat(self.stream_id, start_time, end_time)
+            return len(messages) if messages else 0
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 获取时间范围内消息数量失败: {e}")
+            return 0
+
+    async def _evaluate_and_build_relation(self, person_id: str, stats: dict, total_messages: int):
+        """评估并执行关系构建"""
+        import math
+
+        receive_count = stats["receive_count"]
+        reply_count = stats["reply_count"]
+
+        # 计算回复概率（reply_count在总消息中的比值）
+        reply_ratio = reply_count / total_messages if total_messages > 0 else 0
+        # 使用对数函数让低比率时概率上升更快：log(1 + ratio * k) / log(1 + k) + base
+        # k=7时，0.05比率对应约0.4概率，0.1比率对应约0.6概率，0.2比率对应约0.8概率
+        k_reply = 7 * global_config.normal_chat.relation_frequency
+        base_reply_prob = 0.1  # 基础概率10%
+        reply_build_probability = (
+            (math.log(1 + reply_ratio * k_reply) / math.log(1 + k_reply)) * 0.9 + base_reply_prob
+            if reply_ratio > 0
+            else base_reply_prob
+        )
+
+        # 计算接收概率（receive_count的影响）
+        receive_ratio = receive_count / total_messages if total_messages > 0 else 0
+        # 接收概率使用更温和的对数曲线，最大0.5，基础0.08
+        k_receive = 6 * global_config.normal_chat.relation_frequency
+        base_receive_prob = 0.08  # 基础概率8%
+        receive_build_probability = (
+            (math.log(1 + receive_ratio * k_receive) / math.log(1 + k_receive)) * 0.42 + base_receive_prob
+            if receive_ratio > 0
+            else base_receive_prob
+        )
+
+        # 取最高概率
+        final_probability = max(reply_build_probability, receive_build_probability)
+
+        logger.info(
+            f"[{self.stream_name}] 用户 {person_id} 关系构建概率评估："
+            f"回复比例：{reply_ratio:.2f}(对数概率:{reply_build_probability:.2f})"
+            f"，接收比例：{receive_ratio:.2f}(对数概率:{receive_build_probability:.2f})"
+            f"，最终概率：{final_probability:.2f}"
+        )
+
+        # 使用随机数决定是否构建关系
+        if random() < final_probability:
+            logger.info(f"[{self.stream_name}] 决定为用户 {person_id} 构建关系")
+            await self._build_relation_for_person(person_id, stats)
+        else:
+            logger.info(f"[{self.stream_name}] 用户 {person_id} 未通过关系构建概率判定")
+
+    async def _build_relation_for_person(self, person_id: str, stats: dict):
+        """为特定用户构建关系"""
+        try:
+            start_time = stats["first_time"]
+            end_time = stats["last_time"]
+
+            # 获取该时间段的所有消息用于关系构建
+            messages = get_raw_msg_by_timestamp_with_chat(self.stream_id, start_time, end_time)
+
+            if messages:
+                logger.info(f"[{self.stream_name}] 为用户 {person_id} 获取到 {len(messages)} 条消息用于关系构建")
+
+                # 调用关系管理器更新印象
+                relationship_manager = get_relationship_manager()
+                await relationship_manager.update_person_impression(
+                    person_id=person_id, timestamp=end_time, bot_engaged_messages=messages
+                )
+
+                logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建完成")
+            else:
+                logger.warning(f"[{self.stream_name}] 未找到用户 {person_id} 的消息，关系构建跳过")
+
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 为用户 {person_id} 构建关系时出错: {e}")
+            traceback.print_exc()
