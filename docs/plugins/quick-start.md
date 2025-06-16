@@ -1,5 +1,13 @@
 # 🚀 快速开始指南
 
+本指南将带你用5分钟时间，从零开始创建一个功能完整的MaiBot插件。
+
+> **💡 配置先行**
+>
+> 在开始之前，强烈建议你先阅读 ➡️ **[⚙️ 插件配置定义指南](configuration-guide.md)**。
+>
+> 了解如何通过 `config_schema` 定义插件配置，可以让系统为你自动生成带详细注释的 `config.toml` 文件，这是现代插件开发的最佳实践。
+
 ## 📖 概述
 
 这个指南将带你在5分钟内创建你的第一个MaiBot插件。我们将创建一个简单的问候插件，展示插件系统的基本概念。
@@ -122,7 +130,7 @@ class HelloWorldPlugin(BasePlugin):
     plugin_description = "Hello World演示插件，展示基本的Action和Command用法"
     plugin_version = "1.0.0"
     plugin_author = "你的名字"
-    enable_plugin = True
+    enable_plugin = True  # 默认启用插件
     config_file_name = "config.toml"
     
     # Python依赖声明（可选）
@@ -328,6 +336,53 @@ A: 检查：
 1. 正则表达式是否正确
 2. 命令格式是否精确匹配
 3. 是否有其他插件拦截了消息
+
+## 🔧 插件启用状态管理
+
+### 启用状态控制方式
+
+插件可以通过以下两种方式控制启用状态：
+
+1. **类属性控制**
+```python
+class MyPlugin(BasePlugin):
+    enable_plugin = True  # 在类中设置启用状态
+```
+
+2. **配置文件控制**
+```toml
+[plugin]
+enabled = true  # 在配置文件中设置启用状态
+```
+
+### 启用状态优先级
+
+1. 配置文件中的设置优先级高于类属性
+2. 如果配置文件中没有 `[plugin] enabled` 设置，则使用类属性中的值
+3. 如果类属性也没有设置，则使用 `BasePlugin` 的默认值 `False`
+
+### 最佳实践
+
+1. 在开发插件时，建议在类中设置 `enable_plugin = True`
+2. 在部署插件时，通过配置文件控制启用状态
+3. 在文档中明确说明插件的默认启用状态
+4. 提供配置示例，说明如何启用/禁用插件
+
+### 常见问题
+
+1. **插件未加载**
+   - 检查类属性 `enable_plugin` 是否设置为 `True`
+   - 检查配置文件中的 `[plugin] enabled` 设置
+   - 查看日志中是否有插件加载相关的错误信息
+
+2. **配置文件不生效**
+   - 确保配置文件名称正确（默认为 `config.toml`）
+   - 确保配置文件格式正确（TOML格式）
+   - 确保配置文件中的 `[plugin]` 部分存在
+
+3. **动态启用/禁用**
+   - 修改配置文件后需要重启MaiBot才能生效
+   - 目前不支持运行时动态启用/禁用插件
 
 ---
 
