@@ -117,7 +117,7 @@ class ImageManager:
                     logger.warning("GIF转换失败，无法获取描述")
                     return "[表情包(GIF处理失败)]"
                 prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，使用1-2个词描述一下表情包表达的情感和内容，简短一些，输出一段平文本"
-                description, _ = await self._llm.generate_response_for_image(prompt, image_base64_processed, "jpg")
+                description, _ = await self._llm.generate_response_for_image(prompt, image_base64_processed, "png")
             else:
                 prompt = "这是一个表情包，请用使用几个词描述一下表情包所表达的情感和内容，简短一些，输出一段平文本"
                 description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
@@ -258,7 +258,7 @@ class ImageManager:
             max_frames: 最大抽取的帧数，默认15
 
         Returns:
-            Optional[str]: 拼接后的JPG图像的base64编码字符串, 或者在失败时返回None
+            Optional[str]: 拼接后的PNG图像的base64编码字符串, 或者在失败时返回None
         """
         try:
             # 确保base64字符串只包含ASCII字符
@@ -359,7 +359,7 @@ class ImageManager:
 
             # 转换为base64
             buffer = io.BytesIO()
-            combined_image.save(buffer, format="JPEG", quality=85)  # 保存为JPEG
+            combined_image.save(buffer, format="PNG")  # 保存为PNG
             result_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
             return result_base64
