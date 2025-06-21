@@ -8,6 +8,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 from ...common.database.database import db
 from ...common.database.database_model import ChatStreams  # 新增导入
 from maim_message import GroupInfo, UserInfo
+from src.person_info.relationship_manager import get_relationship_manager
 
 # 避免循环导入，使用TYPE_CHECKING进行类型提示
 if TYPE_CHECKING:
@@ -67,6 +68,7 @@ class ChatStream:
         self.last_active_time = data.get("last_active_time", self.create_time) if data else self.create_time
         self.saved = False
         self.context: ChatMessageContext = None  # 用于存储该聊天的上下文信息
+        self.relationship_manager = get_relationship_manager()
 
     def to_dict(self) -> dict:
         """转换为字典格式"""
