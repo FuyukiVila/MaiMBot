@@ -38,7 +38,10 @@ class ReplyAction(BaseAction):
     action_description = "参与聊天回复，发送文本进行表达"
 
     # 动作参数定义
-    action_parameters = {"reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"}
+    action_parameters = {
+        "reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none",
+        "reason": "回复的原因",
+    }
 
     # 动作使用场景
     action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
@@ -107,13 +110,14 @@ class NoReplyAction(BaseAction):
     """不回复动作，继承时会等待新消息或超时"""
 
     focus_activation_type = ActionActivationType.ALWAYS
+    # focus_activation_type = ActionActivationType.RANDOM
     normal_activation_type = ActionActivationType.NEVER
     mode_enable = ChatMode.FOCUS
     parallel_action = False
 
     # 动作基本信息
     action_name = "no_reply"
-    action_description = "暂时不回复消息，等待新消息或超时"
+    action_description = "暂时不回复消息"
 
     # 默认超时时间，将由插件在注册时设置
     waiting_timeout = 1200
@@ -121,14 +125,16 @@ class NoReplyAction(BaseAction):
     # 连续no_reply计数器
     _consecutive_count = 0
 
+    # random_activation_probability = 0.2
+
     # 分级等待时间
     _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
 
     # 动作参数定义
-    action_parameters = {}
+    action_parameters = {"reason": "不回复的原因"}
 
     # 动作使用场景
-    action_require = ["你连续发送了太多消息，且无人回复", "想要暂时不回复"]
+    action_require = ["你发送了消息，目前无人回复"]
 
     # 关联类型
     associated_types = []
@@ -140,6 +146,8 @@ class NoReplyAction(BaseAction):
             NoReplyAction._consecutive_count += 1
             count = NoReplyAction._consecutive_count
 
+            reason = self.action_data.get("reason", "")
+
             # 计算本次等待时间
             if count <= len(self._waiting_stages):
                 # 前3次使用预设时间
@@ -150,7 +158,9 @@ class NoReplyAction(BaseAction):
                 # 第4次及以后使用WAITING_TIME_THRESHOLD
                 timeout = self.waiting_timeout
 
-            logger.info(f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)")
+            logger.info(
+                f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)，原因: {reason}"
+            )
 
             # 等待新消息或达到时间上限
             result = await self.wait_for_new_message(timeout)
@@ -361,6 +371,7 @@ class CoreActionsPlugin(BasePlugin):
     config_schema = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "config_version": ConfigField(type=str, default="0.0.2", description="配置文件版本"),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
@@ -376,6 +387,9 @@ class CoreActionsPlugin(BasePlugin):
             "stage_1_wait": ConfigField(type=int, default=10, description="第1次连续不回复的等待时间（秒）"),
             "stage_2_wait": ConfigField(type=int, default=60, description="第2次连续不回复的等待时间（秒）"),
             "stage_3_wait": ConfigField(type=int, default=600, description="第3次连续不回复的等待时间（秒）"),
+            "random_probability": ConfigField(
+                type=float, default=0.8, description="Focus模式下，随机选择不回复的概率（0.0到1.0）", example=0.8
+            ),
         },
         "emoji": {
             "random_probability": ConfigField(
@@ -390,6 +404,9 @@ class CoreActionsPlugin(BasePlugin):
         # --- 从配置动态设置Action/Command ---
         emoji_chance = self.get_config("emoji.random_probability", 0.1)
         EmojiAction.random_activation_probability = emoji_chance
+
+        no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
+        NoReplyAction.random_activation_probability = no_reply_probability
 
         no_reply_timeout = self.get_config("no_reply.waiting_timeout", 1200)
         NoReplyAction.waiting_timeout = no_reply_timeout
