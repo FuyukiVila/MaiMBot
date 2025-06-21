@@ -628,7 +628,7 @@ class HeartFChatting:
             )
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(all_plan_info, running_memories, loop_start_time)
+                plan_result = await self.action_planner.plan(all_plan_info, running_memorys, loop_start_time)
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),
