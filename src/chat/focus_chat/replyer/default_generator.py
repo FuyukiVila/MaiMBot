@@ -29,14 +29,16 @@ def init_prompt():
     Prompt(
         """
 {expression_habits_block}
-{extra_info_block}
+{structured_info_block}
 {memory_block}
 {relation_info_block}
+{extra_info_block}
 {time_block}
 {chat_target}
 {chat_info}
 {reply_target_block}
 {identity}
+
 你需要使用合适的语言习惯和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 {config_expression_style}
 {keywords_reaction_prompt}
@@ -50,8 +52,10 @@ def init_prompt():
     Prompt(
         """
 {expression_habits_block}
-{extra_info_block}
+{structured_info_block}
 {memory_block}
+{relation_info_block}
+{extra_info_block}
 {time_block}
 {chat_target}
 {chat_info}
@@ -277,10 +281,13 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         self_info_block = reply_data.get("self_info_block", "")
-        extra_info_block = reply_data.get("extra_info_block", "")
+        structured_info = reply_data.get("structured_info", "")
         relation_info_block = reply_data.get("relation_info_block", "")
         reply_to = reply_data.get("reply_to", "none")
         memory_block = reply_data.get("memory_block", "")
+
+        # 优先使用 extra_info_block，没有则用 extra_info
+        extra_info_block = reply_data.get("extra_info_block", "") or reply_data.get("extra_info", "")
 
         sender = ""
         target = ""
@@ -336,6 +343,16 @@ class DefaultReplyer:
             expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habbits_str}\n\n"
         if grammar_habbits_str.strip():
             expression_habits_block += f"请你根据情景使用以下句法：\n{grammar_habbits_str}\n"
+
+        if structured_info:
+            structured_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{structured_info}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+        else:
+            structured_info_block = ""
+
+        if extra_info_block:
+            extra_info_block = f"以下是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策"
+        else:
+            extra_info_block = ""
 
         # 关键词检测与反应
         keywords_reaction_prompt = ""
@@ -395,6 +412,7 @@ class DefaultReplyer:
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 memory_block=memory_block,
+                structured_info_block=structured_info_block,
                 extra_info_block=extra_info_block,
                 relation_info_block=relation_info_block,
                 self_info_block=self_info_block,
@@ -421,6 +439,7 @@ class DefaultReplyer:
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 memory_block=memory_block,
+                structured_info_block=structured_info_block,
                 extra_info_block=extra_info_block,
                 time_block=time_block,
                 keywords_reaction_prompt=keywords_reaction_prompt,
