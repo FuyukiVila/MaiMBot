@@ -68,7 +68,7 @@ class ActionModifier:
                     hfc_obs = obs
                 if isinstance(obs, ChattingObservation):
                     chat_obs = obs
-                    chat_content = obs.talking_message_str_truncate
+                    chat_content = obs.talking_message_str_truncate_short
 
             # 合并所有动作变更
             merged_action_changes = {"add": [], "remove": []}
@@ -79,9 +79,6 @@ class ActionModifier:
                 obs = hfc_obs
                 # 获取适用于FOCUS模式的动作
                 all_actions = self.action_manager.get_using_actions_for_mode("focus")
-                # print("=======================")
-                # print(all_actions)
-                # print("=======================")
                 action_changes = await self.analyze_loop_actions(obs)
                 if action_changes["add"] or action_changes["remove"]:
                     # 合并动作变更
