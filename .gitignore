@@ -60,7 +60,6 @@ elua.confirmed
 # C extensions
 *.so
 /results
-.github/
 
 # Distribution / packaging
 .Python
