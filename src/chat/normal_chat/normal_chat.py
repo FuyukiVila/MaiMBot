@@ -22,7 +22,7 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
-from src.chat.focus_chat.replyer.default_generator import DefaultReplyer
+from src.chat.replyer.default_generator import DefaultReplyer
 from src.person_info.person_info import PersonInfoManager
 from src.person_info.relationship_manager import get_relationship_manager
 from src.chat.utils.chat_message_builder import (
@@ -1000,7 +1000,9 @@ class NormalChat:
         """
         # --- 1. 定义参数 ---
         evaluation_minutes = 10.0
-        target_replies_per_min = global_config.chat.talk_frequency  # 目标频率：e.g. 1条/分钟
+        target_replies_per_min = global_config.chat.get_current_talk_frequency(
+            self.stream_id
+        )  # 目标频率：e.g. 1条/分钟
         target_replies_in_window = target_replies_per_min * evaluation_minutes  # 10分钟内的目标回复数
 
         if target_replies_in_window <= 0:
