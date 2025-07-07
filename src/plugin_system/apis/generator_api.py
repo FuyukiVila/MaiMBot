@@ -8,6 +8,7 @@
     success, reply_set = await generator_api.generate_reply(chat_stream, action_data, reasoning)
 """
 
+import traceback
 from typing import Tuple, Any, Dict, List, Optional
 from src.common.logger import get_logger
 from src.chat.replyer.default_generator import DefaultReplyer
@@ -46,10 +47,14 @@ def get_replyer(
     try:
         logger.debug(f"[GeneratorAPI] 正在获取回复器，chat_id: {chat_id}, chat_stream: {'有' if chat_stream else '无'}")
         return replyer_manager.get_replyer(
-            chat_stream=chat_stream, chat_id=chat_id, model_configs=model_configs, request_type=request_type
+            chat_stream=chat_stream,
+            chat_id=chat_id,
+            model_configs=model_configs,
+            request_type=request_type,
         )
     except Exception as e:
         logger.error(f"[GeneratorAPI] 获取回复器时发生意外错误: {e}", exc_info=True)
+        traceback.print_exc()
         return None
 
 
@@ -63,15 +68,15 @@ async def generate_reply(
     chat_id: str = None,
     action_data: Dict[str, Any] = None,
     reply_to: str = "",
-    relation_info: str = "",
-    structured_info: str = "",
     extra_info: str = "",
     available_actions: List[str] = None,
+    enable_tool: bool = False,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
     return_prompt: bool = False,
     model_configs: Optional[List[Dict[str, Any]]] = None,
     request_type: str = "",
+    enable_timeout: bool = False,
 ) -> Tuple[bool, List[Tuple[str, Any]]]:
     """生成回复
 
@@ -92,22 +97,22 @@ async def generate_reply(
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, []
 
-        logger.info("[GeneratorAPI] 开始生成回复")
+        logger.debug("[GeneratorAPI] 开始生成回复")
 
         # 调用回复器生成回复
         success, content, prompt = await replyer.generate_reply_with_context(
             reply_data=action_data or {},
             reply_to=reply_to,
-            relation_info=relation_info,
-            structured_info=structured_info,
             extra_info=extra_info,
             available_actions=available_actions,
+            enable_timeout=enable_timeout,
+            enable_tool=enable_tool,
         )
 
         reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
 
         if success:
-            logger.info(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
+            logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
         else:
             logger.warning("[GeneratorAPI] 回复生成失败")
 
