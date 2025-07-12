@@ -526,13 +526,13 @@ class ActionModifier:
 
         return removals
 
-    def get_available_actions_count(self,mode:str = "focus") -> int:
+    def get_available_actions_count(self, mode: str = "focus") -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
         current_actions = self.action_manager.get_using_actions_for_mode(mode)
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)
-    
+
     def should_skip_planning_for_no_reply(self) -> bool:
         """判断是否应该跳过规划过程"""
         current_actions = self.action_manager.get_using_actions_for_mode("focus")
