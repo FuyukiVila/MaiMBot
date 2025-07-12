@@ -1,6 +1,6 @@
 from typing import List, Optional, Any, Dict
 from src.common.logger import get_logger
-from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
+from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
@@ -43,7 +43,7 @@ class ActionModifier:
 
     async def modify_actions(
         self,
-        loop_info=None,
+        history_loop=None,
         mode: str = "focus",
         message_content: str = "",
     ):
@@ -82,8 +82,8 @@ class ActionModifier:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
         # === 第一阶段：传统观察处理 ===
-        if loop_info:
-            removals_from_loop = await self.analyze_loop_actions(loop_info)
+        if history_loop:
+            removals_from_loop = await self.analyze_loop_actions(history_loop)
             if removals_from_loop:
                 removals_s1.extend(removals_from_loop)
 
@@ -459,7 +459,7 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
 
-    async def analyze_loop_actions(self, obs: FocusLoopInfo) -> List[tuple[str, str]]:
+    async def analyze_loop_actions(self, history_loop: List[CycleDetail]) -> List[tuple[str, str]]:
         """分析最近的循环内容并决定动作的移除
 
         Returns:
@@ -469,7 +469,7 @@ class ActionModifier:
         removals = []
 
         # 获取最近10次循环
-        recent_cycles = obs.history_loop[-10:] if len(obs.history_loop) > 10 else obs.history_loop
+        recent_cycles = history_loop[-10:] if len(history_loop) > 10 else history_loop
         if not recent_cycles:
             return removals
 
@@ -526,16 +526,24 @@ class ActionModifier:
 
         return removals
 
-    def get_available_actions_count(self) -> int:
+    def get_available_actions_count(self,mode:str = "focus") -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
-        current_actions = self.action_manager.get_using_actions_for_mode("normal")
+        current_actions = self.action_manager.get_using_actions_for_mode(mode)
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)
-
-    def should_skip_planning(self) -> bool:
+    
+    def should_skip_planning_for_no_reply(self) -> bool:
         """判断是否应该跳过规划过程"""
-        available_count = self.get_available_actions_count()
+        current_actions = self.action_manager.get_using_actions_for_mode("focus")
+        # 排除no_action（如果存在）
+        if len(current_actions) == 1 and "no_reply" in current_actions:
+            return True
+        return False
+
+    def should_skip_planning_for_no_action(self) -> bool:
+        """判断是否应该跳过规划过程"""
+        available_count = self.action_manager.get_using_actions_for_mode("normal")
         if available_count == 0:
             logger.debug(f"{self.log_prefix} 没有可用动作，跳过规划")
             return True
