@@ -25,7 +25,6 @@ from ...mais4u.mais4u_chat.priority_manager import PriorityManager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
 
 
-
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
         "action_result": {

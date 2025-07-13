@@ -129,7 +129,7 @@ def init_prompt():
 class FacialExpression:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
-        
+
         # 预定义面部表情动作
         self.expressions = {
             # 眼睛表情
@@ -137,90 +137,57 @@ class FacialExpression:
             "eye_cry": {"action": "eye_cry", "data": 1.0},
             "eye_close": {"action": "eye_close", "data": 1.0},
             "eye_normal": {"action": "eye_normal", "data": 1.0},
-            
             # 眉毛表情
             "eyebrow_smile": {"action": "eyebrow_smile", "data": 1.0},
             "eyebrow_angry": {"action": "eyebrow_angry", "data": 1.0},
             "eyebrow_sad": {"action": "eyebrow_sad", "data": 1.0},
             "eyebrow_normal": {"action": "eyebrow_normal", "data": 1.0},
-            
             # 嘴巴表情
             "mouth_sad": {"action": "mouth_sad", "data": 1.0},
             "mouth_angry": {"action": "mouth_angry", "data": 1.0},
             "mouth_laugh": {"action": "mouth_laugh", "data": 1.0},
             "mouth_pout": {"action": "mouth_pout", "data": 1.0},
             "mouth_normal": {"action": "mouth_normal", "data": 1.0},
-            
             # 脸部表情
             "face_blush": {"action": "face_blush", "data": 1.0},
             "face_normal": {"action": "face_normal", "data": 1.0},
         }
-        
+
         # 表情组合模板
         self.expression_combinations = {
-            "happy": {
-                "eye": "eye_smile",
-                "eyebrow": "eyebrow_smile", 
-                "mouth": "mouth_laugh",
-                "face": "face_normal"
-            },
+            "happy": {"eye": "eye_smile", "eyebrow": "eyebrow_smile", "mouth": "mouth_laugh", "face": "face_normal"},
             "very_happy": {
                 "eye": "eye_smile",
                 "eyebrow": "eyebrow_smile",
                 "mouth": "mouth_laugh",
-                "face": "face_blush"
+                "face": "face_blush",
             },
-            "sad": {
-                "eye": "eye_cry",
-                "eyebrow": "eyebrow_sad",
-                "mouth": "mouth_sad",
-                "face": "face_normal"
-            },
-            "angry": {
-                "eye": "eye_normal",
-                "eyebrow": "eyebrow_angry",
-                "mouth": "mouth_angry",
-                "face": "face_normal"
-            },
-            "fear": {
-                "eye": "eye_close",
-                "eyebrow": "eyebrow_normal",
-                "mouth": "mouth_normal",
-                "face": "face_normal"
-            },
-            "shy": {
-                "eye": "eye_normal",
-                "eyebrow": "eyebrow_normal",
-                "mouth": "mouth_pout",
-                "face": "face_blush"
-            },
+            "sad": {"eye": "eye_cry", "eyebrow": "eyebrow_sad", "mouth": "mouth_sad", "face": "face_normal"},
+            "angry": {"eye": "eye_normal", "eyebrow": "eyebrow_angry", "mouth": "mouth_angry", "face": "face_normal"},
+            "fear": {"eye": "eye_close", "eyebrow": "eyebrow_normal", "mouth": "mouth_normal", "face": "face_normal"},
+            "shy": {"eye": "eye_normal", "eyebrow": "eyebrow_normal", "mouth": "mouth_pout", "face": "face_blush"},
             "neutral": {
                 "eye": "eye_normal",
                 "eyebrow": "eyebrow_normal",
                 "mouth": "mouth_normal",
-                "face": "face_normal"
-            }
+                "face": "face_normal",
+            },
         }
-    
+
     def select_expression_by_mood(self, mood_values: dict[str, int]) -> str:
         """根据情绪值选择合适的表情组合"""
         joy = mood_values.get("joy", 5)
         anger = mood_values.get("anger", 1)
         sorrow = mood_values.get("sorrow", 1)
         fear = mood_values.get("fear", 1)
-        
+
         # 找出最强的情绪
-        emotions = {
-            "joy": joy,
-            "anger": anger,
-            "sorrow": sorrow,
-            "fear": fear
-        }
-        
+        emotions = {"joy": joy, "anger": anger, "sorrow": sorrow, "fear": fear}
+
         # 获取最强情绪
         dominant_emotion = max(emotions, key=emotions.get)
         dominant_value = emotions[dominant_emotion]
-        
+
         # 根据情绪强度和类型选择表情
         if dominant_emotion == "joy":
             if joy >= 8:
@@ -239,40 +206,38 @@ class FacialExpression:
             return "fear"
         else:
             return "neutral"
-    
+
     async def send_expression(self, expression_name: str):
         """发送表情组合"""
         if expression_name not in self.expression_combinations:
             logger.warning(f"[{self.chat_id}] 未知表情: {expression_name}")
             return
-        
+
         combination = self.expression_combinations[expression_name]
-        
+
         # 依次发送各部位表情
         for part, expression_key in combination.items():
             if expression_key in self.expressions:
                 expression_data = self.expressions[expression_key]
                 await send_api.custom_to_stream(
-                    message_type="facial_expression",
-                    content=expression_data,
-                    stream_id=self.chat_id
+                    message_type="facial_expression", content=expression_data, stream_id=self.chat_id
                 )
                 logger.info(f"[{self.chat_id}] 发送面部表情 {part}: {expression_data}")
                 await asyncio.sleep(0.1)  # 短暂延迟避免同时发送过多消息
-        
+
         # 通知ChatMood需要更新amadus
         # 这里需要从mood_manager获取ChatMood实例并标记
         chat_mood = mood_manager.get_mood_by_chat_id(self.chat_id)
         if chat_mood.last_expression != expression_name:
             chat_mood.last_expression = expression_name
             chat_mood.expression_needs_update = True
-    
+
     async def send_expression_by_mood(self, mood_values: dict[str, int]):
         """根据情绪值发送相应的面部表情"""
         expression_name = self.select_expression_by_mood(mood_values)
         logger.info(f"[{self.chat_id}] 根据情绪值选择表情: {expression_name}, 情绪值: {mood_values}")
         await self.send_expression(expression_name)
-    
+
     async def reset_expression(self):
         """重置为中性表情"""
         await self.send_expression("neutral")
@@ -298,12 +263,12 @@ class ChatMood:
         )
 
         self.last_change_time = 0
-        
+
         # 添加面部表情系统
         self.facial_expression = FacialExpression(chat_id)
         self.last_expression = "neutral"  # 记录上一次的表情
         self.expression_needs_update = False  # 标记表情是否需要更新
-        
+
         # 设置初始中性表情
         asyncio.create_task(self.facial_expression.reset_expression())
         self.expression_needs_update = True  # 初始化时也标记需要更新
@@ -410,7 +375,7 @@ class ChatMood:
         if numerical_mood_response:
             old_mood_values = self.mood_values.copy()
             self.mood_values = numerical_mood_response
-            
+
             # 发送面部表情
             new_expression = self.facial_expression.select_expression_by_mood(self.mood_values)
             if new_expression != self.last_expression:
@@ -490,7 +455,7 @@ class ChatMood:
         if numerical_mood_response:
             old_mood_values = self.mood_values.copy()
             self.mood_values = numerical_mood_response
-            
+
             # 发送面部表情
             new_expression = self.facial_expression.select_expression_by_mood(self.mood_values)
             if new_expression != self.last_expression:
@@ -505,17 +470,12 @@ class ChatMood:
         """如果表情有变化，发送更新到amadus"""
         if self.expression_needs_update:
             # 发送当前表情状态到amadus，使用简洁的action/data格式
-            expression_data = {
-                "action": self.last_expression,
-                "data": 1.0
-            }
-            
+            expression_data = {"action": self.last_expression, "data": 1.0}
+
             await send_api.custom_to_stream(
-                message_type="amadus_expression_update",
-                content=expression_data,
-                stream_id=self.chat_id
+                message_type="amadus_expression_update", content=expression_data, stream_id=self.chat_id
             )
-            
+
             logger.info(f"[{self.chat_id}] 发送表情更新到amadus: {expression_data}")
             self.expression_needs_update = False  # 重置标记
 
@@ -563,15 +523,15 @@ class MoodManager:
             return
 
         logger.info("启动情绪管理任务...")
-        
+
         # 启动情绪回归任务
         regression_task = MoodRegressionTask(self)
         await async_task_manager.add_task(regression_task)
-        
+
         # 启动表情更新任务
         expression_task = ExpressionUpdateTask(self)
         await async_task_manager.add_task(expression_task)
-        
+
         self.task_started = True
         logger.info("情绪管理任务已启动（包含情绪回归和表情更新）")
 
@@ -595,7 +555,7 @@ class MoodManager:
                 mood.last_expression = "neutral"
                 mood.expression_needs_update = True  # 标记表情需要更新
                 return
-        
+
         # 如果没有找到现有的mood，创建新的
         new_mood = ChatMood(chat_id)
         self.mood_list.append(new_mood)
@@ -607,7 +567,7 @@ class MoodManager:
         for mood in self.mood_list:
             if mood.chat_id == chat_id:
                 return mood.facial_expression
-        
+
         # 如果没有找到，创建新的
         new_mood = ChatMood(chat_id)
         self.mood_list.append(new_mood)

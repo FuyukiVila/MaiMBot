@@ -197,10 +197,10 @@ class S4UChat:
         score = 0.0
         # 如果消息 @ 了机器人，则增加一个很大的分数
         # if f"@{global_config.bot.nickname}" in message.processed_plain_text or any(
-            # f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
+        # f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
         # ):
-            # score += self.at_bot_priority_bonus
-        
+        # score += self.at_bot_priority_bonus
+
         # 加上消息自带的优先级
         score += priority_info.get("message_priority", 0.0)
 

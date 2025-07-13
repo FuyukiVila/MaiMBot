@@ -370,7 +370,7 @@ class BaseAction(ABC):
         # 获取focus_activation_type和normal_activation_type
         focus_activation_type = get_enum_value("focus_activation_type", "always")
         normal_activation_type = get_enum_value("normal_activation_type", "always")
-        
+
         # 处理activation_type：如果插件中声明了就用插件的值，否则默认使用focus_activation_type
         activation_type = getattr(cls, "activation_type", None)
         if activation_type is None:
