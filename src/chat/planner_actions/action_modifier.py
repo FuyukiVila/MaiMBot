@@ -1,15 +1,20 @@
-from typing import List, Optional, Any, Dict
-from src.common.logger import get_logger
-from src.chat.focus_chat.hfc_utils import CycleDetail
-from src.chat.message_receive.chat_stream import get_chat_manager
-from src.config.config import global_config
-from src.llm_models.utils_model import LLMRequest
 import random
 import asyncio
 import hashlib
 import time
+from typing import List, Any, Dict, TYPE_CHECKING
+
+from src.common.logger import get_logger
+from src.config.config import global_config
+from src.llm_models.utils_model import LLMRequest
+from src.chat.focus_chat.hfc_utils import CycleDetail
+from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
+from src.plugin_system.base.component_types import ChatMode, ActionInfo, ActionActivationType
+
+if TYPE_CHECKING:
+    from src.chat.message_receive.chat_stream import ChatStream
 
 logger = get_logger("action_manager")
 
@@ -25,7 +30,7 @@ class ActionModifier:
     def __init__(self, action_manager: ActionManager, chat_id: str):
         """初始化动作处理器"""
         self.chat_id = chat_id
-        self.chat_stream = get_chat_manager().get_stream(self.chat_id)
+        self.chat_stream: ChatStream = get_chat_manager().get_stream(self.chat_id)  # type: ignore
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
 
         self.action_manager = action_manager
@@ -44,9 +49,8 @@ class ActionModifier:
     async def modify_actions(
         self,
         history_loop=None,
-        mode: str = "focus",
         message_content: str = "",
-    ):
+    ):  # sourcery skip: use-named-expression
         """
         动作修改流程，整合传统观察处理和新的激活类型判定
 
@@ -62,7 +66,7 @@ class ActionModifier:
         removals_s2 = []
 
         self.action_manager.restore_actions()
-        all_actions = self.action_manager.get_using_actions_for_mode(mode)
+        all_actions = self.action_manager.get_using_actions()
 
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=self.chat_stream.stream_id,
@@ -82,10 +86,10 @@ class ActionModifier:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
         # === 第一阶段：传统观察处理 ===
-        if history_loop:
-            removals_from_loop = await self.analyze_loop_actions(history_loop)
-            if removals_from_loop:
-                removals_s1.extend(removals_from_loop)
+        # if history_loop:
+        # removals_from_loop = await self.analyze_loop_actions(history_loop)
+        # if removals_from_loop:
+        # removals_s1.extend(removals_from_loop)
 
         # 检查动作的关联类型
         chat_context = self.chat_stream.context
@@ -104,12 +108,11 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
             # 获取当前使用的动作集（经过第一阶段处理）
-            current_using_actions = self.action_manager.get_using_actions_for_mode(mode)
+            current_using_actions = self.action_manager.get_using_actions()
 
             # 获取因激活类型判定而需要移除的动作
             removals_s2 = await self._get_deactivated_actions_by_type(
                 current_using_actions,
-                mode,
                 chat_content,
             )
 
@@ -124,24 +127,22 @@ class ActionModifier:
             removals_summary = " | ".join([f"{name}({reason})" for name, reason in all_removals])
 
         logger.info(
-            f"{self.log_prefix}{mode}模式动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions_for_mode(mode).keys())}||移除记录: {removals_summary}"
+            f"{self.log_prefix} 动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions().keys())}||移除记录: {removals_summary}"
         )
 
-    def _check_action_associated_types(self, all_actions, chat_context):
+    def _check_action_associated_types(self, all_actions: Dict[str, ActionInfo], chat_context: ChatMessageContext):
         type_mismatched_actions = []
-        for action_name, data in all_actions.items():
-            if data.get("associated_types"):
-                if not chat_context.check_types(data["associated_types"]):
-                    associated_types_str = ", ".join(data["associated_types"])
-                    reason = f"适配器不支持（需要: {associated_types_str}）"
-                    type_mismatched_actions.append((action_name, reason))
-                    logger.debug(f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}")
+        for action_name, action_info in all_actions.items():
+            if action_info.associated_types and not chat_context.check_types(action_info.associated_types):
+                associated_types_str = ", ".join(action_info.associated_types)
+                reason = f"适配器不支持（需要: {associated_types_str}）"
+                type_mismatched_actions.append((action_name, reason))
+                logger.debug(f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}")
         return type_mismatched_actions
 
     async def _get_deactivated_actions_by_type(
         self,
         actions_with_info: Dict[str, Any],
-        mode: str = "focus",
         chat_content: str = "",
     ) -> List[tuple[str, str]]:
         """
@@ -163,28 +164,34 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = f"{mode}_activation_type"
-            activation_type = action_info.get(activation_type, "always")
+            activation_type = action_info.get("activation_type", "")
+            if not activation_type:
+                activation_type = action_info.get("focus_activation_type", "")
 
             if activation_type == "always":
                 continue  # 总是激活，无需处理
 
-            elif activation_type == "random":
-                probability = action_info.get("random_activation_probability", ActionManager.DEFAULT_RANDOM_PROBABILITY)
-                if not (random.random() < probability):
+            elif activation_type == ActionActivationType.RANDOM:
+                probability = action_info.random_activation_probability or ActionManager.DEFAULT_RANDOM_PROBABILITY
+                if random.random() >= probability:
                     reason = f"RANDOM类型未触发（概率{probability}）"
                     deactivated_actions.append((action_name, reason))
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
-            elif activation_type == "keyword":
+            elif activation_type == ActionActivationType.KEYWORD:
                 if not self._check_keyword_activation(action_name, action_info, chat_content):
-                    keywords = action_info.get("activation_keywords", [])
+                    keywords = action_info.activation_keywords
                     reason = f"关键词未匹配（关键词: {keywords}）"
                     deactivated_actions.append((action_name, reason))
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
-            elif activation_type == "llm_judge":
+            elif activation_type == ActionActivationType.LLM_JUDGE:
                 llm_judge_actions[action_name] = action_info
+
+            elif activation_type == "never":
+                reason = "激活类型为never"
+                deactivated_actions.append((action_name, reason))
+                logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
 
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
@@ -202,35 +209,6 @@ class ActionModifier:
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
         return deactivated_actions
-
-    async def process_actions_for_planner(
-        self, observed_messages_str: str = "", chat_context: Optional[str] = None, extra_context: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        [已废弃] 此方法现在已被整合到 modify_actions() 中
-
-        为了保持向后兼容性而保留，但建议直接使用 ActionManager.get_using_actions()
-        规划器应该直接从 ActionManager 获取最终的可用动作集，而不是调用此方法
-
-        新的架构：
-        1. 主循环调用 modify_actions() 处理完整的动作管理流程
-        2. 规划器直接使用 ActionManager.get_using_actions() 获取最终动作集
-        """
-        logger.warning(
-            f"{self.log_prefix}process_actions_for_planner() 已废弃，建议规划器直接使用 ActionManager.get_using_actions()"
-        )
-
-        # 为了向后兼容，仍然返回当前使用的动作集
-        current_using_actions = self.action_manager.get_using_actions()
-        all_registered_actions = self.action_manager.get_registered_actions()
-
-        # 构建完整的动作信息
-        result = {}
-        for action_name in current_using_actions.keys():
-            if action_name in all_registered_actions:
-                result[action_name] = all_registered_actions[action_name]
-
-        return result
 
     def _generate_context_hash(self, chat_content: str) -> str:
         """生成上下文的哈希值用于缓存"""
@@ -299,7 +277,7 @@ class ActionModifier:
                 task_results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 # 处理结果并更新缓存
-                for _, (action_name, result) in enumerate(zip(task_names, task_results, strict=False)):
+                for action_name, result in zip(task_names, task_results, strict=False):
                     if isinstance(result, Exception):
                         logger.error(f"{self.log_prefix}LLM判定action {action_name} 时出错: {result}")
                         results[action_name] = False
@@ -315,7 +293,7 @@ class ActionModifier:
             except Exception as e:
                 logger.error(f"{self.log_prefix}并行LLM判定失败: {e}")
                 # 如果并行执行失败，为所有任务返回False
-                for action_name in tasks_to_run.keys():
+                for action_name in tasks_to_run:
                     results[action_name] = False
 
         # 清理过期缓存
@@ -326,10 +304,11 @@ class ActionModifier:
     def _cleanup_expired_cache(self, current_time: float):
         """清理过期的缓存条目"""
         expired_keys = []
-        for cache_key, cache_data in self._llm_judge_cache.items():
-            if current_time - cache_data["timestamp"] > self._cache_expiry_time:
-                expired_keys.append(cache_key)
-
+        expired_keys.extend(
+            cache_key
+            for cache_key, cache_data in self._llm_judge_cache.items()
+            if current_time - cache_data["timestamp"] > self._cache_expiry_time
+        )
         for key in expired_keys:
             del self._llm_judge_cache[key]
 
@@ -408,7 +387,7 @@ class ActionModifier:
     def _check_keyword_activation(
         self,
         action_name: str,
-        action_info: Dict[str, Any],
+        action_info: ActionInfo,
         chat_content: str = "",
     ) -> bool:
         """
@@ -425,8 +404,8 @@ class ActionModifier:
             bool: 是否应该激活此action
         """
 
-        activation_keywords = action_info.get("activation_keywords", [])
-        case_sensitive = action_info.get("keyword_case_sensitive", False)
+        activation_keywords = action_info.activation_keywords
+        case_sensitive = action_info.keyword_case_sensitive
 
         if not activation_keywords:
             logger.warning(f"{self.log_prefix}动作 {action_name} 设置为关键词触发但未配置关键词")
@@ -526,13 +505,13 @@ class ActionModifier:
 
         return removals
 
-    def get_available_actions_count(self,mode:str = "focus") -> int:
+    def get_available_actions_count(self, mode: str = "focus") -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
         current_actions = self.action_manager.get_using_actions_for_mode(mode)
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)
-    
+
     def should_skip_planning_for_no_reply(self) -> bool:
         """判断是否应该跳过规划过程"""
         current_actions = self.action_manager.get_using_actions_for_mode("focus")
