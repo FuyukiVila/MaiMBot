@@ -123,9 +123,7 @@ class HeartFChatting:
         else:
             self.priority_manager = None
 
-        logger.info(
-            f"{self.log_prefix} HeartFChatting 初始化完成"
-        )
+        logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
 
         self.energy_value = 100
 

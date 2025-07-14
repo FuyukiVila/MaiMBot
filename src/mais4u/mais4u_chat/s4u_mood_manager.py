@@ -140,7 +140,7 @@ def init_prompt():
 class FacialExpression:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
-        
+
         # 预定义面部表情动作（根据用户定义的表情动作）
         self.expressions = {
             # 眼睛表情
@@ -151,7 +151,6 @@ class FacialExpression:
             # "eye_smile": {"action": "eye_smile", "data": 1.0},  # 未定义，占位
             # "eye_cry": {"action": "eye_cry", "data": 1.0},  # 未定义，占位
             # "eye_normal": {"action": "eye_normal", "data": 1.0},  # 未定义，占位
-            
             # 眉毛表情
             "eyebrow_happy_weak": {"action": "eyebrow_happy_weak", "data": 1.0},
             "eyebrow_happy_strong": {"action": "eyebrow_happy_strong", "data": 1.0},
@@ -163,7 +162,6 @@ class FacialExpression:
             # "eyebrow_angry": {"action": "eyebrow_angry", "data": 1.0},  # 未定义，占位
             # "eyebrow_sad": {"action": "eyebrow_sad", "data": 1.0},  # 未定义，占位
             # "eyebrow_normal": {"action": "eyebrow_normal", "data": 1.0},  # 未定义，占位
-            
             # 嘴巴表情（注意：用户定义的是mouth，可能是mouth的拼写错误）
             "mouth_default": {"action": "mouth_default", "data": 1.0},
             "mouth_happy_strong": {"action": "mouth_happy_strong", "data": 1.0},  # 保持用户原始拼写
@@ -173,17 +171,16 @@ class FacialExpression:
             # "mouth_laugh": {"action": "mouth_laugh", "data": 1.0},  # 未定义，占位
             # "mouth_pout": {"action": "mouth_pout", "data": 1.0},  # 未定义，占位
             # "mouth_normal": {"action": "mouth_normal", "data": 1.0},  # 未定义，占位
-            
             # 脸部表情
             # "face_blush": {"action": "face_blush", "data": 1.0},  # 未定义，占位
             # "face_normal": {"action": "face_normal", "data": 1.0},  # 未定义，占位
         }
-        
+
         # 表情组合模板（根据新的表情动作调整）
         self.expression_combinations = {
             "happy": {
                 "eye": "eye_happy_weak",
-                "eyebrow": "eyebrow_happy_weak", 
+                "eyebrow": "eyebrow_happy_weak",
                 "mouth": "mouth_default",
             },
             "very_happy": {
@@ -210,18 +207,18 @@ class FacialExpression:
             "neutral": {
                 "eyebrow": "eyebrow_happy_weak",
                 "mouth": "mouth_default",
-            }
+            },
         }
-        
+
         # 未定义的表情部位（保留备用）：
         # 眼睛：eye_smile, eye_cry, eye_close, eye_normal
-        # 眉毛：eyebrow_smile, eyebrow_angry, eyebrow_sad, eyebrow_normal  
+        # 眉毛：eyebrow_smile, eyebrow_angry, eyebrow_sad, eyebrow_normal
         # 嘴巴：mouth_sad, mouth_angry, mouth_laugh, mouth_pout, mouth_normal
         # 脸部：face_blush, face_normal
-        
+
         # 初始化当前表情状态
         self.last_expression = "neutral"
-    
+
     def select_expression_by_mood(self, mood_values: dict[str, int]) -> str:
         """根据情绪值选择合适的表情组合"""
         joy = mood_values.get("joy", 5)
@@ -235,7 +232,7 @@ class FacialExpression:
         # 获取最强情绪
         dominant_emotion = max(emotions, key=emotions.get)
         _dominant_value = emotions[dominant_emotion]
-        
+
         # 根据情绪强度和类型选择表情
         if dominant_emotion == "joy":
             if joy >= 8:
@@ -254,10 +251,12 @@ class FacialExpression:
             return "fear"
         else:
             return "neutral"
-    
-    async def _send_expression_actions(self, expression_name: str, log_prefix: str = "发送面部表情", override_values: dict = None):
+
+    async def _send_expression_actions(
+        self, expression_name: str, log_prefix: str = "发送面部表情", override_values: dict = None
+    ):
         """统一的表情动作发送函数 - 发送完整的表情状态
-        
+
         Args:
             expression_name: 表情名称
             log_prefix: 日志前缀
@@ -268,14 +267,10 @@ class FacialExpression:
             return
 
         combination = self.expression_combinations[expression_name]
-        
+
         # 按部位分组所有已定义的表情动作
-        expressions_by_part = {
-            "eye": {},
-            "eyebrow": {},
-            "mouth": {}
-        }
-        
+        expressions_by_part = {"eye": {}, "eyebrow": {}, "mouth": {}}
+
         # 将所有已定义的表情按部位分组
         for expression_key, expression_data in self.expressions.items():
             if expression_key.startswith("eye_"):
@@ -284,39 +279,36 @@ class FacialExpression:
                 expressions_by_part["eyebrow"][expression_key] = expression_data
             elif expression_key.startswith("mouth_"):
                 expressions_by_part["mouth"][expression_key] = expression_data
-        
+
         # 构建完整的表情状态
         complete_expression_state = {}
-        
+
         # 为每个部位构建完整的表情动作状态
         for part in expressions_by_part.keys():
             if expressions_by_part[part]:  # 如果该部位有已定义的表情
                 part_actions = {}
                 active_expression = combination.get(part)  # 当前激活的表情
-                
+
                 # 添加该部位所有已定义的表情动作
                 for expression_key, expression_data in expressions_by_part[part].items():
                     # 复制表情数据并设置激活状态
                     action_data = expression_data.copy()
-                    
+
                     # 检查是否有覆盖值
                     if override_values and expression_key in override_values:
                         action_data["data"] = override_values[expression_key]
                     else:
                         action_data["data"] = 1.0 if expression_key == active_expression else 0.0
-                    
+
                     part_actions[expression_key] = action_data
-                
+
                 complete_expression_state[part] = part_actions
                 logger.debug(f"[{self.chat_id}] 部位 {part}: 激活 {active_expression}, 总共 {len(part_actions)} 个动作")
-        
+
         # 发送完整的表情状态
         if complete_expression_state:
-            package_data = {
-                "expression_name": expression_name,
-                "actions": complete_expression_state
-            }
-            
+            package_data = {"expression_name": expression_name, "actions": complete_expression_state}
+
             await send_api.custom_to_stream(
                 message_type="face_emotion",
                 content=package_data,
@@ -324,18 +316,20 @@ class FacialExpression:
                 storage_message=False,
                 show_log=False,
             )
-            
+
             # 统计信息
             total_actions = sum(len(part_actions) for part_actions in complete_expression_state.values())
             active_actions = [f"{part}:{combination.get(part, 'none')}" for part in complete_expression_state.keys()]
-            logger.info(f"[{self.chat_id}] {log_prefix}: {expression_name} - 发送{total_actions}个动作，激活: {', '.join(active_actions)}")
+            logger.info(
+                f"[{self.chat_id}] {log_prefix}: {expression_name} - 发送{total_actions}个动作，激活: {', '.join(active_actions)}"
+            )
         else:
             logger.warning(f"[{self.chat_id}] 表情 {expression_name} 没有有效的动作可发送")
-    
+
     async def send_expression(self, expression_name: str):
         """发送表情组合"""
         await self._send_expression_actions(expression_name, "发送面部表情")
-        
+
         # 通知ChatMood需要更新amadus
         # 这里需要从mood_manager获取ChatMood实例并标记
         chat_mood = mood_manager.get_mood_by_chat_id(self.chat_id)
@@ -352,78 +346,60 @@ class FacialExpression:
     async def reset_expression(self):
         """重置为中性表情"""
         await self.send_expression("neutral")
-    
+
     async def perform_blink(self):
         """执行眨眼动作"""
         # 检查当前表情组合中eye部位是否为eye_happy_weak
         current_combination = self.expression_combinations.get(self.last_expression, {})
         current_eye_expression = current_combination.get("eye")
-        
+
         if current_eye_expression == "eye_happy_weak":
             logger.debug(f"[{self.chat_id}] 当前eye表情为{current_eye_expression}，跳过眨眼动作")
             return
-        
+
         logger.debug(f"[{self.chat_id}] 执行眨眼动作")
-        
+
         # 第一阶段：闭眼
-        await self._send_expression_actions(
-            self.last_expression, 
-            "眨眼-闭眼", 
-            override_values={"eye_close": 1.0}
-        )
-        
+        await self._send_expression_actions(self.last_expression, "眨眼-闭眼", override_values={"eye_close": 1.0})
+
         # 等待0.1-0.15秒
         blink_duration = random.uniform(0.7, 0.12)
         await asyncio.sleep(blink_duration)
-        
+
         # 第二阶段：睁眼
-        await self._send_expression_actions(
-            self.last_expression, 
-            "眨眼-睁眼", 
-            override_values={"eye_close": 0.0}
-        )
-        
-        
+        await self._send_expression_actions(self.last_expression, "眨眼-睁眼", override_values={"eye_close": 0.0})
+
     async def perform_shift(self):
         """执行眨眼动作"""
         # 检查当前表情组合中eye部位是否为eye_happy_weak
         current_combination = self.expression_combinations.get(self.last_expression, {})
         current_eye_expression = current_combination.get("eye")
-        
+
         direction = random.choice(["left", "right"])
         strength = random.randint(6, 9) / 10
         time_duration = random.randint(5, 15) / 10
-        
+
         if current_eye_expression == "eye_happy_weak" or current_eye_expression == "eye_close":
             logger.debug(f"[{self.chat_id}] 当前eye表情为{current_eye_expression}，跳过漂移动作")
             return
-        
+
         logger.debug(f"[{self.chat_id}] 执行漂移动作，方向：{direction}，强度：{strength}，时间：{time_duration}")
-        
+
         if direction == "left":
             override_values = {"eye_shift_left": strength}
             back_values = {"eye_shift_left": 0.0}
         else:
             override_values = {"eye_shift_right": strength}
             back_values = {"eye_shift_right": 0.0}
-        
+
         # 第一阶段：闭眼
-        await self._send_expression_actions(
-            self.last_expression, 
-            "漂移", 
-            override_values=override_values
-        )
-        
+        await self._send_expression_actions(self.last_expression, "漂移", override_values=override_values)
+
         # 等待0.1-0.15秒
         await asyncio.sleep(time_duration)
-        
-        # 第二阶段：睁眼
-        await self._send_expression_actions(
-            self.last_expression, 
-            "回归", 
-            override_values=back_values
-        )
 
+        # 第二阶段：睁眼
+        await self._send_expression_actions(self.last_expression, "回归", override_values=back_values)
 
 
 class ChatMood:
@@ -653,16 +629,13 @@ class ChatMood:
         """如果表情有变化，发送更新到amadus"""
         if self.expression_needs_update:
             # 使用统一的表情发送函数
-            await self.facial_expression._send_expression_actions(
-                self.last_expression, 
-                "发送表情更新到amadus"
-            )
+            await self.facial_expression._send_expression_actions(self.last_expression, "发送表情更新到amadus")
             self.expression_needs_update = False  # 重置标记
-    
+
     async def perform_blink(self):
         """执行眨眼动作"""
         await self.facial_expression.perform_blink()
-        
+
     async def perform_shift(self):
         """执行漂移动作"""
         await self.facial_expression.perform_shift()
@@ -677,31 +650,33 @@ class MoodRegressionTask(AsyncTask):
     async def run(self):
         self.run_count += 1
         logger.info(f"[回归任务] 第{self.run_count}次检查，当前管理{len(self.mood_manager.mood_list)}个聊天的情绪状态")
-        
+
         now = time.time()
         regression_executed = 0
-        
+
         for mood in self.mood_manager.mood_list:
             chat_info = f"chat {mood.chat_id}"
-            
+
             if mood.last_change_time == 0:
                 logger.debug(f"[回归任务] {chat_info} 尚未有情绪变化，跳过回归")
                 continue
 
             time_since_last_change = now - mood.last_change_time
-            
+
             if time_since_last_change > 120:  # 2分钟
                 if mood.regression_count >= 3:
                     logger.debug(f"[回归任务] {chat_info} 已达到最大回归次数(3次)，停止回归")
                     continue
 
-                logger.info(f"[回归任务] {chat_info} 开始情绪回归 (距上次变化{int(time_since_last_change)}秒，第{mood.regression_count + 1}次回归)")
+                logger.info(
+                    f"[回归任务] {chat_info} 开始情绪回归 (距上次变化{int(time_since_last_change)}秒，第{mood.regression_count + 1}次回归)"
+                )
                 await mood.regress_mood()
                 regression_executed += 1
             else:
                 remaining_time = 120 - time_since_last_change
                 logger.debug(f"[回归任务] {chat_info} 距离回归还需等待{int(remaining_time)}秒")
-        
+
         if regression_executed > 0:
             logger.info(f"[回归任务] 本次执行了{regression_executed}个聊天的情绪回归")
         else:
@@ -718,19 +693,21 @@ class ExpressionUpdateTask(AsyncTask):
     async def run(self):
         self.run_count += 1
         now = time.time()
-        
+
         # 每60秒输出一次状态信息（避免日志太频繁）
         if now - self.last_log_time > 60:
-            logger.info(f"[表情任务] 已运行{self.run_count}次，当前管理{len(self.mood_manager.mood_list)}个聊天的表情状态")
+            logger.info(
+                f"[表情任务] 已运行{self.run_count}次，当前管理{len(self.mood_manager.mood_list)}个聊天的表情状态"
+            )
             self.last_log_time = now
-        
+
         updates_sent = 0
         for mood in self.mood_manager.mood_list:
             if mood.expression_needs_update:
                 logger.debug(f"[表情任务] chat {mood.chat_id} 检测到表情变化，发送更新")
                 await mood.send_expression_update_if_needed()
                 updates_sent += 1
-        
+
         if updates_sent > 0:
             logger.info(f"[表情任务] 发送了{updates_sent}个表情更新")
 
@@ -746,15 +723,17 @@ class BlinkTask(AsyncTask):
     async def run(self):
         self.run_count += 1
         now = time.time()
-        
+
         # 每60秒输出一次状态信息（避免日志太频繁）
         if now - self.last_log_time > 20:
-            logger.debug(f"[眨眼任务] 已运行{self.run_count}次，当前管理{len(self.mood_manager.mood_list)}个聊天的眨眼状态")
+            logger.debug(
+                f"[眨眼任务] 已运行{self.run_count}次，当前管理{len(self.mood_manager.mood_list)}个聊天的眨眼状态"
+            )
             self.last_log_time = now
-        
-        interval_add = random.randint(0, 2) 
+
+        interval_add = random.randint(0, 2)
         await asyncio.sleep(interval_add)
-        
+
         blinks_executed = 0
         for mood in self.mood_manager.mood_list:
             try:
@@ -762,10 +741,11 @@ class BlinkTask(AsyncTask):
                 blinks_executed += 1
             except Exception as e:
                 logger.error(f"[眨眼任务] 处理chat {mood.chat_id}时出错: {e}")
-        
+
         if blinks_executed > 0:
             logger.debug(f"[眨眼任务] 本次执行了{blinks_executed}个聊天的眨眼动作")
-            
+
+
 class ShiftTask(AsyncTask):
     def __init__(self, mood_manager: "MoodManager"):
         # 初始随机间隔4-6秒
@@ -777,15 +757,17 @@ class ShiftTask(AsyncTask):
     async def run(self):
         self.run_count += 1
         now = time.time()
-        
+
         # 每60秒输出一次状态信息（避免日志太频繁）
         if now - self.last_log_time > 20:
-            logger.debug(f"[漂移任务] 已运行{self.run_count}次，当前管理{len(self.mood_manager.mood_list)}个聊天的漂移状态")
+            logger.debug(
+                f"[漂移任务] 已运行{self.run_count}次，当前管理{len(self.mood_manager.mood_list)}个聊天的漂移状态"
+            )
             self.last_log_time = now
-        
+
         interval_add = random.randint(0, 3)
         await asyncio.sleep(interval_add)
-        
+
         blinks_executed = 0
         for mood in self.mood_manager.mood_list:
             try:
@@ -793,7 +775,7 @@ class ShiftTask(AsyncTask):
                 blinks_executed += 1
             except Exception as e:
                 logger.error(f"[漂移任务] 处理chat {mood.chat_id}时出错: {e}")
-        
+
         if blinks_executed > 0:
             logger.debug(f"[漂移任务] 本次执行了{blinks_executed}个聊天的漂移动作")
 
@@ -818,15 +800,15 @@ class MoodManager:
         # 启动表情更新任务
         expression_task = ExpressionUpdateTask(self)
         await async_task_manager.add_task(expression_task)
-        
+
         # 启动眨眼任务
         blink_task = BlinkTask(self)
         await async_task_manager.add_task(blink_task)
-        
+
         # 启动漂移任务
         shift_task = ShiftTask(self)
         await async_task_manager.add_task(shift_task)
-        
+
         self.task_started = True
         logger.info("情绪管理任务已启动（包含情绪回归、表情更新和眨眼动作）")
 
