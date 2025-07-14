@@ -35,19 +35,14 @@ class PersonalityConfig(ConfigBase):
     personality_core: str
     """核心人格"""
 
-    personality_sides: list[str] = field(default_factory=lambda: [])
+    personality_side: str
     """人格侧写"""
+        
+    identity: str = ""
+    """身份特征"""
 
     compress_personality: bool = True
     """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
-
-
-@dataclass
-class IdentityConfig(ConfigBase):
-    """个体特征配置类"""
-
-    identity_detail: list[str] = field(default_factory=lambda: [])
-    """身份特征"""
 
     compress_identity: bool = True
     """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
@@ -83,6 +78,9 @@ class ChatConfig(ConfigBase):
     talk_frequency: float = 1
     """回复频率阈值"""
 
+    use_s4u_prompt_mode: bool = False
+    """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
+
     # 修改：基于时段的回复频率配置，改为数组格式
     time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
     """
@@ -105,11 +103,9 @@ class ChatConfig(ConfigBase):
     表示从该时间开始使用该频率，直到下一个时间点
     """
 
-    auto_focus_threshold: float = 1.0
-    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+    focus_value: float = 1.0
+    """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
 
-    exit_focus_threshold: float = 1.0
-    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
     def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
@@ -250,7 +246,6 @@ class ChatConfig(ConfigBase):
         except (ValueError, IndexError):
             return None
 
-
 @dataclass
 class MessageReceiveConfig(ConfigBase):
     """消息接收配置类"""
@@ -279,12 +274,6 @@ class NormalChatConfig(ConfigBase):
     """@bot 必然回复"""
 
 
-@dataclass
-class FocusChatConfig(ConfigBase):
-    """专注聊天配置类"""
-
-    consecutive_replies: float = 1
-    """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
 @dataclass

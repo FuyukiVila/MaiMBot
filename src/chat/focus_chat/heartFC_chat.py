@@ -18,11 +18,10 @@ from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.base.component_types import ActionInfo, ChatMode
+from src.plugin_system.base.component_types import ActionInfo
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
 from ...mais4u.mais4u_chat.priority_manager import PriorityManager
-from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
 
 
 ERROR_LOOP_INFO = {
@@ -91,9 +90,7 @@ class HeartFChatting:
 
         # 新增：消息计数器和疲惫阈值
         self._message_count = 0  # 发送的消息计数
-        # 基于exit_focus_threshold动态计算疲惫阈值
-        # 基础值30条，通过exit_focus_threshold调节：threshold越小，越容易疲惫
-        self._message_threshold = max(10, int(30 * global_config.chat.exit_focus_threshold))
+        self._message_threshold = max(10, int(30 * global_config.chat.focus_value))
         self._fatigue_triggered = False  # 是否已触发疲惫退出
 
         self.action_manager = ActionManager()
@@ -127,7 +124,7 @@ class HeartFChatting:
             self.priority_manager = None
 
         logger.info(
-            f"{self.log_prefix} HeartFChatting 初始化完成，消息疲惫阈值: {self._message_threshold}条（基于exit_focus_threshold={global_config.chat.exit_focus_threshold}计算，仅在auto模式下生效）"
+            f"{self.log_prefix} HeartFChatting 初始化完成"
         )
 
         self.energy_value = 100
@@ -195,7 +192,7 @@ class HeartFChatting:
 
     async def _loopbody(self):
         if self.loop_mode == "focus":
-            self.energy_value -= 5 * (1 / global_config.chat.exit_focus_threshold)
+            self.energy_value -= 5 * global_config.chat.focus_value
             if self.energy_value <= 0:
                 self.loop_mode = "normal"
                 return True
@@ -211,7 +208,7 @@ class HeartFChatting:
                 filter_bot=True,
             )
 
-            if len(new_messages_data) > 4 * global_config.chat.auto_focus_threshold:
+            if len(new_messages_data) > 4 * global_config.chat.focus_value:
                 self.loop_mode = "focus"
                 self.energy_value = 100
                 return True
@@ -246,7 +243,6 @@ class HeartFChatting:
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             loop_start_time = time.time()
-            # await self.loop_info.observe()
             await self.relationship_builder.build_relation()
 
             # 第一步：动作修改
@@ -588,7 +584,7 @@ class HeartFChatting:
                 reply_to=reply_to,
                 available_actions=available_actions,
                 enable_tool=global_config.tool.enable_in_normal_chat,
-                request_type="normal.replyer",
+                request_type="chat.replyer.normal",
             )
 
             if not success or not reply_set:

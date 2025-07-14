@@ -11,7 +11,7 @@ from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
-from src.plugin_system.base.component_types import ChatMode, ActionInfo, ActionActivationType
+from src.plugin_system.base.component_types import ActionInfo, ActionActivationType
 
 if TYPE_CHECKING:
     from src.chat.message_receive.chat_stream import ChatStream
@@ -71,7 +71,7 @@ class ActionModifier:
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=self.chat_stream.stream_id,
             timestamp=time.time(),
-            limit=int(global_config.chat.max_context_size * 0.5),
+            limit=min(int(global_config.chat.max_context_size * 0.33), 10),
         )
         chat_content = build_readable_messages(
             message_list_before_now_half,
@@ -164,11 +164,9 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = action_info.activation_type
-            if not activation_type:
-                activation_type = action_info.get("focus_activation_type", "")
+            activation_type = action_info.activation_type or action_info.focus_activation_type
 
-            if activation_type == "always":
+            if activation_type == ActionActivationType.ALWAYS:
                 continue  # 总是激活，无需处理
 
             elif activation_type == ActionActivationType.RANDOM:
@@ -188,7 +186,7 @@ class ActionModifier:
             elif activation_type == ActionActivationType.LLM_JUDGE:
                 llm_judge_actions[action_name] = action_info
 
-            elif activation_type == "never":
+            elif activation_type == ActionActivationType.NEVER:
                 reason = "激活类型为never"
                 deactivated_actions.append((action_name, reason))
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
@@ -318,7 +316,7 @@ class ActionModifier:
     async def _llm_judge_action(
         self,
         action_name: str,
-        action_info: Dict[str, Any],
+        action_info: ActionInfo,
         chat_content: str = "",
     ) -> bool:
         """
@@ -337,9 +335,9 @@ class ActionModifier:
 
         try:
             # 构建判定提示词
-            action_description = action_info.get("description", "")
-            action_require = action_info.get("require", [])
-            custom_prompt = action_info.get("llm_judge_prompt", "")
+            action_description = action_info.description
+            action_require = action_info.action_require
+            custom_prompt = action_info.llm_judge_prompt
 
             # 构建基础判定提示词
             base_prompt = f"""
@@ -438,92 +436,92 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
 
-    async def analyze_loop_actions(self, history_loop: List[CycleDetail]) -> List[tuple[str, str]]:
-        """分析最近的循环内容并决定动作的移除
+    # async def analyze_loop_actions(self, history_loop: List[CycleDetail]) -> List[tuple[str, str]]:
+    #     """分析最近的循环内容并决定动作的移除
 
-        Returns:
-            List[Tuple[str, str]]: 包含要删除的动作及原因的元组列表
-                [("action3", "some reason")]
-        """
-        removals = []
+    #     Returns:
+    #         List[Tuple[str, str]]: 包含要删除的动作及原因的元组列表
+    #             [("action3", "some reason")]
+    #     """
+    #     removals = []
 
-        # 获取最近10次循环
-        recent_cycles = history_loop[-10:] if len(history_loop) > 10 else history_loop
-        if not recent_cycles:
-            return removals
+    #     # 获取最近10次循环
+    #     recent_cycles = history_loop[-10:] if len(history_loop) > 10 else history_loop
+    #     if not recent_cycles:
+    #         return removals
 
-        reply_sequence = []  # 记录最近的动作序列
+    #     reply_sequence = []  # 记录最近的动作序列
 
-        for cycle in recent_cycles:
-            action_result = cycle.loop_plan_info.get("action_result", {})
-            action_type = action_result.get("action_type", "unknown")
-            reply_sequence.append(action_type == "reply")
+    #     for cycle in recent_cycles:
+    #         action_result = cycle.loop_plan_info.get("action_result", {})
+    #         action_type = action_result.get("action_type", "unknown")
+    #         reply_sequence.append(action_type == "reply")
 
-        # 计算连续回复的相关阈值
+    #     # 计算连续回复的相关阈值
 
-        max_reply_num = int(global_config.focus_chat.consecutive_replies * 3.2)
-        sec_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 2)
-        one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1.5)
+    #     max_reply_num = int(global_config.focus_chat.consecutive_replies * 3.2)
+    #     sec_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 2)
+    #     one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1.5)
 
-        # 获取最近max_reply_num次的reply状态
-        if len(reply_sequence) >= max_reply_num:
-            last_max_reply_num = reply_sequence[-max_reply_num:]
-        else:
-            last_max_reply_num = reply_sequence[:]
+    #     # 获取最近max_reply_num次的reply状态
+    #     if len(reply_sequence) >= max_reply_num:
+    #         last_max_reply_num = reply_sequence[-max_reply_num:]
+    #     else:
+    #         last_max_reply_num = reply_sequence[:]
 
-        # 详细打印阈值和序列信息，便于调试
-        logger.info(
-            f"连续回复阈值: max={max_reply_num}, sec={sec_thres_reply_num}, one={one_thres_reply_num}，"
-            f"最近reply序列: {last_max_reply_num}"
-        )
-        # print(f"consecutive_replies: {consecutive_replies}")
+    #     # 详细打印阈值和序列信息，便于调试
+    #     logger.info(
+    #         f"连续回复阈值: max={max_reply_num}, sec={sec_thres_reply_num}, one={one_thres_reply_num}，"
+    #         f"最近reply序列: {last_max_reply_num}"
+    #     )
+    #     # print(f"consecutive_replies: {consecutive_replies}")
 
-        # 根据最近的reply情况决定是否移除reply动作
-        if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):
-            # 如果最近max_reply_num次都是reply，直接移除
-            reason = f"连续回复过多（最近{len(last_max_reply_num)}次全是reply，超过阈值{max_reply_num}）"
-            removals.append(("reply", reason))
-            # reply_count = len(last_max_reply_num) - no_reply_count
-        elif len(last_max_reply_num) >= sec_thres_reply_num and all(last_max_reply_num[-sec_thres_reply_num:]):
-            # 如果最近sec_thres_reply_num次都是reply，40%概率移除
-            removal_probability = 0.4 / global_config.focus_chat.consecutive_replies
-            if random.random() < removal_probability:
-                reason = (
-                    f"连续回复较多（最近{sec_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
-                )
-                removals.append(("reply", reason))
-        elif len(last_max_reply_num) >= one_thres_reply_num and all(last_max_reply_num[-one_thres_reply_num:]):
-            # 如果最近one_thres_reply_num次都是reply，20%概率移除
-            removal_probability = 0.2 / global_config.focus_chat.consecutive_replies
-            if random.random() < removal_probability:
-                reason = (
-                    f"连续回复检测（最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
-                )
-                removals.append(("reply", reason))
-        else:
-            logger.debug(f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常")
+    #     # 根据最近的reply情况决定是否移除reply动作
+    #     if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):
+    #         # 如果最近max_reply_num次都是reply，直接移除
+    #         reason = f"连续回复过多（最近{len(last_max_reply_num)}次全是reply，超过阈值{max_reply_num}）"
+    #         removals.append(("reply", reason))
+    #         # reply_count = len(last_max_reply_num) - no_reply_count
+    #     elif len(last_max_reply_num) >= sec_thres_reply_num and all(last_max_reply_num[-sec_thres_reply_num:]):
+    #         # 如果最近sec_thres_reply_num次都是reply，40%概率移除
+    #         removal_probability = 0.4 / global_config.focus_chat.consecutive_replies
+    #         if random.random() < removal_probability:
+    #             reason = (
+    #                 f"连续回复较多（最近{sec_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+    #             )
+    #             removals.append(("reply", reason))
+    #     elif len(last_max_reply_num) >= one_thres_reply_num and all(last_max_reply_num[-one_thres_reply_num:]):
+    #         # 如果最近one_thres_reply_num次都是reply，20%概率移除
+    #         removal_probability = 0.2 / global_config.focus_chat.consecutive_replies
+    #         if random.random() < removal_probability:
+    #             reason = (
+    #                 f"连续回复检测（最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+    #             )
+    #             removals.append(("reply", reason))
+    #     else:
+    #         logger.debug(f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常")
 
-        return removals
+    #     return removals
 
-    def get_available_actions_count(self, mode: str = "focus") -> int:
-        """获取当前可用动作数量（排除默认的no_action）"""
-        current_actions = self.action_manager.get_using_actions_for_mode(mode)
-        # 排除no_action（如果存在）
-        filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
-        return len(filtered_actions)
+    # def get_available_actions_count(self, mode: str = "focus") -> int:
+    #     """获取当前可用动作数量（排除默认的no_action）"""
+    #     current_actions = self.action_manager.get_using_actions_for_mode(mode)
+    #     # 排除no_action（如果存在）
+    #     filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
+    #     return len(filtered_actions)
 
-    def should_skip_planning_for_no_reply(self) -> bool:
-        """判断是否应该跳过规划过程"""
-        current_actions = self.action_manager.get_using_actions_for_mode("focus")
-        # 排除no_action（如果存在）
-        if len(current_actions) == 1 and "no_reply" in current_actions:
-            return True
-        return False
+    # def should_skip_planning_for_no_reply(self) -> bool:
+    #     """判断是否应该跳过规划过程"""
+    #     current_actions = self.action_manager.get_using_actions_for_mode("focus")
+    #     # 排除no_action（如果存在）
+    #     if len(current_actions) == 1 and "no_reply" in current_actions:
+    #         return True
+    #     return False
 
-    def should_skip_planning_for_no_action(self) -> bool:
-        """判断是否应该跳过规划过程"""
-        available_count = self.action_manager.get_using_actions_for_mode("normal")
-        if available_count == 0:
-            logger.debug(f"{self.log_prefix} 没有可用动作，跳过规划")
-            return True
-        return False
+    # def should_skip_planning_for_no_action(self) -> bool:
+    #     """判断是否应该跳过规划过程"""
+    #     available_count = self.action_manager.get_using_actions_for_mode("normal")
+    #     if available_count == 0:
+    #         logger.debug(f"{self.log_prefix} 没有可用动作，跳过规划")
+    #         return True
+    #     return False
