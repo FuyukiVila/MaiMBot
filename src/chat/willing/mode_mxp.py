@@ -199,9 +199,9 @@ class MxpWillingManager(BaseWillingManager):
         )
         self.chat_person_reply_willing[chat.stream_id] = self.chat_person_reply_willing.get(chat.stream_id, {})
         self.chat_person_reply_willing[chat.stream_id][
-            self.ongoing_messages[message.message_info.message_id].person_id
+            self.ongoing_messages[message.get("message_id")].person_id
         ] = self.chat_person_reply_willing[chat.stream_id].get(
-            self.ongoing_messages[message.message_info.message_id].person_id, self.chat_reply_willing[chat.stream_id]
+            self.ongoing_messages[message.get("message_id")].person_id, self.chat_reply_willing[chat.stream_id]
         )
 
         current_time = time.time()
