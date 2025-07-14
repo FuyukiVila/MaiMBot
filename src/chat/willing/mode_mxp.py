@@ -191,8 +191,8 @@ class MxpWillingManager(BaseWillingManager):
                             basic_willing + (willing - basic_willing) * self.intention_decay_rate
                         )
 
-    def setup(self, message, chat, is_mentioned_bot, interested_rate):
-        super().setup(message, chat, is_mentioned_bot, interested_rate)
+    def setup(self, message, chat):
+        super().setup(message, chat)
 
         self.chat_reply_willing[chat.stream_id] = self.chat_reply_willing.get(
             chat.stream_id, self.basic_maximum_willing
