@@ -110,16 +110,16 @@ class ReplyAction(BaseAction):
 
             # 构建回复文本
             reply_text = ""
-            first_replyed = False
+            first_replied = False
             for reply_seg in reply_set:
                 data = reply_seg[1]
-                if not first_replyed:
+                if not first_replied:
                     if need_reply:
                         await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""), typing=False)
-                        first_replyed = True
+                        first_replied = True
                     else:
                         await self.send_text(content=data, typing=False)
-                        first_replyed = True
+                        first_replied = True
                 else:
                     await self.send_text(content=data, typing=True)
                 reply_text += data
@@ -175,7 +175,7 @@ class CoreActionsPlugin(BasePlugin):
     # 配置Schema定义
     config_schema = {
         "plugin": {
-            "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
             "config_version": ConfigField(type=str, default="0.4.0", description="配置文件版本"),
         },
         "components": {

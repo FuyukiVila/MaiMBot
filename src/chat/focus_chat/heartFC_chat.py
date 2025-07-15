@@ -18,7 +18,7 @@ from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.base.component_types import ActionInfo
+from src.plugin_system.base.component_types import ActionInfo, ChatMode
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
 from ...mais4u.mais4u_chat.priority_manager import PriorityManager
@@ -86,7 +86,7 @@ class HeartFChatting:
 
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
 
-        self.loop_mode = "normal"
+        self.loop_mode = ChatMode.NORMAL  # 初始循环模式为普通模式
 
         # 新增：消息计数器和疲惫阈值
         self._message_count = 0  # 发送的消息计数
@@ -119,7 +119,7 @@ class HeartFChatting:
             self.priority_manager = PriorityManager(
                 normal_queue_max_size=5,
             )
-            self.loop_mode = "priority"
+            self.loop_mode = ChatMode.PRIORITY
         else:
             self.priority_manager = None
 
@@ -189,14 +189,14 @@ class HeartFChatting:
         )
 
     async def _loopbody(self):
-        if self.loop_mode == "focus":
+        if self.loop_mode == ChatMode.FOCUS:
             self.energy_value -= 5 * global_config.chat.focus_value
             if self.energy_value <= 0:
-                self.loop_mode = "normal"
+                self.loop_mode = ChatMode.NORMAL
                 return True
 
             return await self._observe()
-        elif self.loop_mode == "normal":
+        elif self.loop_mode == ChatMode.NORMAL:
             new_messages_data = get_raw_msg_by_timestamp_with_chat(
                 chat_id=self.stream_id,
                 timestamp_start=self.last_read_time,
@@ -207,7 +207,7 @@ class HeartFChatting:
             )
 
             if len(new_messages_data) > 4 * global_config.chat.focus_value:
-                self.loop_mode = "focus"
+                self.loop_mode = ChatMode.FOCUS
                 self.energy_value = 100
                 return True
 
@@ -243,6 +243,8 @@ class HeartFChatting:
             loop_start_time = time.time()
             await self.relationship_builder.build_relation()
 
+            available_actions = {}
+
             # 第一步：动作修改
             with Timer("动作修改", cycle_timers):
                 try:
@@ -252,14 +254,14 @@ class HeartFChatting:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")
 
             # 如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
-            if self.loop_mode == "normal":
+            if self.loop_mode == ChatMode.NORMAL:
                 reply_to_str = await self.build_reply_to_str(message_data)
                 gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str))
 
             with Timer("规划器", cycle_timers):
                 plan_result = await self.action_planner.plan(mode=self.loop_mode)
 
-            action_result = plan_result.get("action_result", {})
+            action_result: dict = plan_result.get("action_result", {})  # type: ignore
             action_type, action_data, reasoning, is_parallel = (
                 action_result.get("action_type", "error"),
                 action_result.get("action_data", {}),
@@ -269,7 +271,7 @@ class HeartFChatting:
 
             action_data["loop_start_time"] = loop_start_time
 
-            if self.loop_mode == "normal":
+            if self.loop_mode == ChatMode.NORMAL:
                 if action_type == "no_action":
                     logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定进行回复")
                 elif is_parallel:
@@ -334,7 +336,7 @@ class HeartFChatting:
         self.end_cycle(loop_info, cycle_timers)
         self.print_cycle_info(cycle_timers)
 
-        if self.loop_mode == "normal":
+        if self.loop_mode == ChatMode.NORMAL:
             await self.willing_manager.after_generate_reply_handle(message_data.get("message_id", ""))
 
         return True
@@ -608,17 +610,17 @@ class HeartFChatting:
         )
 
         reply_text = ""
-        first_replyed = False
+        first_replied = False
         for reply_seg in reply_set:
             data = reply_seg[1]
-            if not first_replyed:
+            if not first_replied:
                 if need_reply:
                     await send_api.text_to_stream(
                         text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, typing=False
                     )
                 else:
                     await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=False)
-                first_replyed = True
+                first_replied = True
             else:
                 await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=True)
             reply_text += data

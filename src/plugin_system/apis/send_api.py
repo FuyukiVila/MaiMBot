@@ -91,7 +91,7 @@ async def _send_to_target(
         )
 
         # 创建消息段
-        message_segment = Seg(type=message_type, data=content)
+        message_segment = Seg(type=message_type, data=content)  # type: ignore
 
         # 处理回复消息
         anchor_message = None
@@ -254,7 +254,6 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
         message_dict = {
             "message_info": message_info,
             "raw_message": find_msg.get("processed_plain_text"),
-            "detailed_plain_text": find_msg.get("processed_plain_text"),
             "processed_plain_text": find_msg.get("processed_plain_text"),
         }
 

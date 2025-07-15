@@ -117,7 +117,7 @@ class ChatWatching:
     async def _send_watching_update(self):
         """立即发送视线状态更新"""
         await send_api.custom_to_stream(
-            message_type="watching", content=self.current_state.value, stream_id=self.chat_id
+            message_type="watching", content=self.current_state.value, stream_id=self.chat_id, storage_message=False
         )
 
         logger.info(f"[{self.chat_id}] 发送视线状态更新: {self.current_state.value}")

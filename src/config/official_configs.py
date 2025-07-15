@@ -589,6 +589,9 @@ class LPMMKnowledgeConfig(ConfigBase):
     qa_res_top_k: int = 10
     """QA最终结果的Top K数量"""
 
+    embedding_dimension: int = 1024
+    """嵌入向量维度，应该与模型的输出维度一致"""
+
 
 @dataclass
 class ModelConfig(ConfigBase):
@@ -625,3 +628,12 @@ class ModelConfig(ConfigBase):
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
+
+    lpmm_entity_extract: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM实体提取模型配置"""
+
+    lpmm_rdf_build: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM RDF构建模型配置"""
+
+    lpmm_qa: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM问答模型配置"""
