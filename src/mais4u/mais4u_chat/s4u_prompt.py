@@ -160,7 +160,7 @@ class PromptBuilder:
 
         background_dialogue_prompt = ""
         if background_dialogue_list:
-            context_msgs = background_dialogue_list[-s4u_config.max_context_message_length:]
+            context_msgs = background_dialogue_list[-s4u_config.max_context_message_length :]
             background_dialogue_prompt_str = build_readable_messages(
                 context_msgs,
                 timestamp_mode="normal_no_YMD",
@@ -170,7 +170,7 @@ class PromptBuilder:
 
         core_msg_str = ""
         if core_dialogue_list:
-            core_dialogue_list = core_dialogue_list[-s4u_config.max_core_message_length:]
+            core_dialogue_list = core_dialogue_list[-s4u_config.max_core_message_length :]
 
             first_msg = core_dialogue_list[0]
             start_speaking_user_id = first_msg.get("user_id")
@@ -209,7 +209,7 @@ class PromptBuilder:
 
     def build_gift_info(self, message: MessageRecvS4U):
         if message.is_gift:
-            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"        
+            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"
         return ""
 
     def build_sc_info(self, message: MessageRecvS4U):
@@ -228,11 +228,11 @@ class PromptBuilder:
         )
 
         core_dialogue_prompt, background_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
-        
+
         gift_info = self.build_gift_info(message)
-        
+
         sc_info = self.build_sc_info(message)
-        
+
         screen_info = screen_manager.get_screen_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -253,7 +253,7 @@ class PromptBuilder:
             background_dialogue_prompt=background_dialogue_prompt,
             message_txt=message_txt,
         )
-        
+
         print(prompt)
 
         return prompt

@@ -166,12 +166,12 @@ class S4UConfig(S4UConfigBase):
 
     enable_loading_indicator: bool = True
     """是否显示加载提示"""
-    
+
     max_context_message_length: int = 20
     """上下文消息最大长度"""
-    
+
     max_core_message_length: int = 30
-    """核心消息最大长度"""  
+    """核心消息最大长度"""
 
 
 @dataclass
@@ -186,7 +186,7 @@ def update_s4u_config():
     """更新S4U配置文件"""
     # 创建配置目录（如果不存在）
     os.makedirs(CONFIG_DIR, exist_ok=True)
-    
+
     # 检查模板文件是否存在
     if not os.path.exists(TEMPLATE_PATH):
         logger.error(f"S4U配置模板文件不存在: {TEMPLATE_PATH}")

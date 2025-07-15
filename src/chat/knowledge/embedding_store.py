@@ -294,15 +294,15 @@ class EmbeddingStore:
 class EmbeddingManager:
     def __init__(self):
         self.paragraphs_embedding_store = EmbeddingStore(
-            local_storage['pg_namespace'],
+            local_storage["pg_namespace"],
             EMBEDDING_DATA_DIR_STR,
         )
         self.entities_embedding_store = EmbeddingStore(
-            local_storage['pg_namespace'],
+            local_storage["pg_namespace"],
             EMBEDDING_DATA_DIR_STR,
         )
         self.relation_embedding_store = EmbeddingStore(
-            local_storage['pg_namespace'],
+            local_storage["pg_namespace"],
             EMBEDDING_DATA_DIR_STR,
         )
         self.stored_pg_hashes = set()

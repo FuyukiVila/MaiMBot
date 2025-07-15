@@ -145,24 +145,22 @@ class ChatBot:
         message = MessageRecvS4U(message_data)
         group_info = message.message_info.group_info
         user_info = message.message_info.user_info
-        
-        
+
         get_chat_manager().register_message(message)
         chat = await get_chat_manager().get_or_create_stream(
             platform=message.message_info.platform,  # type: ignore
             user_info=user_info,  # type: ignore
             group_info=group_info,
         )
-        
+
         message.update_chat_stream(chat)
 
         # 处理消息内容
         await message.process()
-        
-        await self.s4u_message_processor.process_message(message)
-        
-        return
 
+        await self.s4u_message_processor.process_message(message)
+
+        return
 
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
@@ -181,7 +179,7 @@ class ChatBot:
         try:
             # 确保所有任务已启动
             await self._ensure_started()
-            
+
             if ENABLE_S4U_CHAT:
                 await self.do_s4u(message_data)
                 return

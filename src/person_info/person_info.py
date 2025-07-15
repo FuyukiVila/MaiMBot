@@ -201,7 +201,7 @@ class PersonInfoManager:
                 if existing:
                     logger.debug(f"用户 {p_data['person_id']} 已存在，跳过创建")
                     return True
-                
+
                 # 尝试创建
                 PersonInfo.create(**p_data)
                 return True
@@ -594,7 +594,7 @@ class PersonInfoManager:
             record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
             if record:
                 return record, False  # 记录存在，未创建
-                
+
             # 记录不存在，尝试创建
             try:
                 PersonInfo.create(**init_data)
@@ -624,7 +624,7 @@ class PersonInfoManager:
             "points": [],
             "forgotten_points": [],
         }
-        
+
         # 序列化JSON字段
         for key in JSON_SERIALIZED_FIELDS:
             if key in initial_data:
@@ -632,12 +632,12 @@ class PersonInfoManager:
                     initial_data[key] = json.dumps(initial_data[key], ensure_ascii=False)
                 elif initial_data[key] is None:
                     initial_data[key] = json.dumps([], ensure_ascii=False)
-        
+
         model_fields = PersonInfo._meta.fields.keys()  # type: ignore
         filtered_initial_data = {k: v for k, v in initial_data.items() if v is not None and k in model_fields}
 
         record, was_created = await asyncio.to_thread(_db_get_or_create_sync, person_id, filtered_initial_data)
-        
+
         if was_created:
             logger.info(f"用户 {platform}:{user_id} (person_id: {person_id}) 不存在，将创建新记录 (Peewee)。")
             logger.info(f"已为 {person_id} 创建新记录，初始数据 (filtered for model): {filtered_initial_data}")

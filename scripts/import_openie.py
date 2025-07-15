@@ -61,7 +61,10 @@ def hash_deduplicate(
     ):
         # 段落hash
         paragraph_hash = get_sha256(raw_paragraph)
-        if f"{local_storage['pg_namespace']}-{paragraph_hash}" in stored_pg_hashes and paragraph_hash in stored_paragraph_hashes:
+        if (
+            f"{local_storage['pg_namespace']}-{paragraph_hash}" in stored_pg_hashes
+            and paragraph_hash in stored_paragraph_hashes
+        ):
             continue
         new_raw_paragraphs[paragraph_hash] = raw_paragraph
         new_triple_list_data[paragraph_hash] = triple_list

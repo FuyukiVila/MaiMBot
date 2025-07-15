@@ -92,16 +92,15 @@ class S4UMessageProcessor:
             user_info=userinfo,
             group_info=groupinfo,
         )
-        
+
         # 处理礼物消息，如果消息被暂存则停止当前处理流程
         if not skip_gift_debounce and not await self.handle_if_gift(message):
             return
         await self.check_if_fake_gift(message)
-        
+
         # 处理屏幕消息
         if await self.handle_screen_message(message):
             return
-        
 
         await self.storage.store_message(message, chat)
 
@@ -110,10 +109,8 @@ class S4UMessageProcessor:
         await s4u_chat.add_message(message)
 
         _interested_rate, _ = await _calculate_interest(message)
-        
+
         await mood_manager.start()
-
-
 
         # 一系列llm驱动的前处理
         chat_mood = mood_manager.get_mood_by_chat_id(chat.stream_id)
@@ -132,28 +129,30 @@ class S4UMessageProcessor:
             logger.info(f"[S4U-礼物] {userinfo.user_nickname} 送出了 {message.gift_name} x{message.gift_count}")
         else:
             logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
-    
+
     async def handle_screen_message(self, message: MessageRecvS4U):
         if message.is_screen:
             screen_manager.set_screen(message.screen_info)
             return True
         return False
-    
+
     async def check_if_fake_gift(self, message: MessageRecvS4U) -> bool:
         """检查消息是否为假礼物"""
         if message.is_gift:
             return False
-        
+
         gift_keywords = ["送出了礼物", "礼物", "送出了"]
         if any(keyword in message.processed_plain_text for keyword in gift_keywords):
-            message.processed_plain_text += "（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分）"
+            message.processed_plain_text += (
+                "（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分）"
+            )
             return True
 
         return False
-    
+
     async def handle_if_gift(self, message: MessageRecvS4U) -> bool:
         """处理礼物消息
-        
+
         Returns:
             bool: True表示应该继续处理消息，False表示消息已被暂存不需要继续处理
         """
@@ -163,35 +162,35 @@ class S4UMessageProcessor:
                 """礼物防抖完成后的回调"""
                 # 创建异步任务来处理合并后的礼物消息，跳过防抖处理
                 asyncio.create_task(self.process_message(merged_message, skip_gift_debounce=True))
-            
+
             # 交给礼物管理器处理，并传入回调函数
             # 对于礼物消息，handle_gift 总是返回 False（消息被暂存）
             await gift_manager.handle_gift(message, gift_callback)
             return False  # 消息被暂存，不继续处理
-        
+
         return True  # 非礼物消息，继续正常处理
 
     async def _handle_context_web_update(self, chat_id: str, message: MessageRecv):
         """处理上下文网页更新的独立task
-        
+
         Args:
             chat_id: 聊天ID
             message: 消息对象
         """
         try:
             logger.debug(f"🔄 开始处理上下文网页更新: {message.message_info.user_info.user_nickname}")
-            
+
             context_manager = get_context_web_manager()
-            
+
             # 只在服务器未启动时启动（避免重复启动）
             if context_manager.site is None:
                 logger.info("🚀 首次启动上下文网页服务器...")
                 await context_manager.start_server()
-            
+
             # 添加消息到上下文并更新网页
             await context_manager.add_message(chat_id, message)
-            
+
             logger.debug(f"✅ 上下文网页更新完成: {message.message_info.user_info.user_nickname}")
-            
+
         except Exception as e:
             logger.error(f"❌ 处理上下文网页更新失败: {e}", exc_info=True)

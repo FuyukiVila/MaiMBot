@@ -7,6 +7,8 @@ from . import prompt_template
 from .knowledge_lib import INVALID_ENTITY
 from src.llm_models.utils_model import LLMRequest
 from json_repair import repair_json
+
+
 def _extract_json_from_text(text: str) -> dict:
     """从文本中提取JSON数据的高容错方法"""
     try:
@@ -24,6 +26,7 @@ def _extract_json_from_text(text: str) -> dict:
 
     except Exception as e:
         logger.error(f"JSON提取失败: {e}, 原始文本: {text[:100]}...")
+
 
 def _entity_extract(llm_req: LLMRequest, paragraph: str) -> List[str]:
     """对段落进行实体提取，返回提取出的实体列表（JSON格式）"""
