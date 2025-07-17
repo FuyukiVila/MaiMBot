@@ -65,7 +65,7 @@ class ChatStreams(BaseModel):
     # user_cardname 可能为空字符串或不存在，设置 null=True 更具灵活性。
     user_cardname = TextField(null=True)
 
-    class Meta:
+    class Meta:  # type: ignore
         # 如果 BaseModel.Meta.database 已设置，则此模型将继承该数据库配置。
         # 如果不使用带有数据库实例的 BaseModel，或者想覆盖它，
         # 请取消注释并在下面设置数据库实例：
@@ -89,7 +89,7 @@ class LLMUsage(BaseModel):
     status = TextField()
     timestamp = DateTimeField(index=True)  # 更改为 DateTimeField 并添加索引
 
-    class Meta:
+    class Meta:  # type: ignore
         # 如果 BaseModel.Meta.database 已设置，则此模型将继承该数据库配置。
         # database = db
         table_name = "llm_usage"
@@ -112,7 +112,7 @@ class Emoji(BaseModel):
     usage_count = IntegerField(default=0)  # 使用次数（被使用的次数）
     last_used_time = FloatField(null=True)  # 上次使用时间
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "emoji"
 
@@ -161,8 +161,9 @@ class Messages(BaseModel):
     additional_config = TextField(null=True)
     is_emoji = BooleanField(default=False)
     is_picid = BooleanField(default=False)
+    is_command = BooleanField(default=False)
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "messages"
 
@@ -186,7 +187,7 @@ class ActionRecords(BaseModel):
     chat_info_stream_id = TextField()
     chat_info_platform = TextField()
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "action_records"
 
@@ -206,7 +207,7 @@ class Images(BaseModel):
     type = TextField()  # 图像类型，例如 "emoji"
     vlm_processed = BooleanField(default=False)  # 是否已经过VLM处理
 
-    class Meta:
+    class Meta:  # type: ignore
         table_name = "images"
 
 
@@ -220,7 +221,7 @@ class ImageDescriptions(BaseModel):
     description = TextField()  # 图像的描述
     timestamp = FloatField()  # 时间戳
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "image_descriptions"
 
@@ -236,7 +237,7 @@ class OnlineTime(BaseModel):
     start_timestamp = DateTimeField(default=datetime.datetime.now)
     end_timestamp = DateTimeField(index=True)
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "online_time"
 
@@ -263,9 +264,21 @@ class PersonInfo(BaseModel):
     last_know = FloatField(null=True)  # 最后一次印象总结时间
     attitude = IntegerField(null=True, default=50)  # 态度，0-100，从非常厌恶到十分喜欢
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "person_info"
+
+
+class Memory(BaseModel):
+    memory_id = TextField(index=True)
+    chat_id = TextField(null=True)
+    memory_text = TextField(null=True)
+    keywords = TextField(null=True)
+    create_time = FloatField(null=True)
+    last_view_time = FloatField(null=True)
+
+    class Meta:  # type: ignore
+        table_name = "memory"
 
 
 class Knowledges(BaseModel):
@@ -277,9 +290,25 @@ class Knowledges(BaseModel):
     embedding = TextField()  # 知识内容的嵌入向量，存储为 JSON 字符串的浮点数列表
     # 可以添加其他元数据字段，如 source, create_time 等
 
-    class Meta:
+    class Meta:  # type: ignore
         # database = db # 继承自 BaseModel
         table_name = "knowledges"
+
+
+class Expression(BaseModel):
+    """
+    用于存储表达风格的模型。
+    """
+
+    situation = TextField()
+    style = TextField()
+    count = FloatField()
+    last_active_time = FloatField()
+    chat_id = TextField(index=True)
+    type = TextField()
+
+    class Meta:  # type: ignore
+        table_name = "expression"
 
 
 class ThinkingLog(BaseModel):
@@ -302,21 +331,8 @@ class ThinkingLog(BaseModel):
     # And: import datetime
     created_at = DateTimeField(default=datetime.datetime.now)
 
-    class Meta:
+    class Meta:  # type: ignore
         table_name = "thinking_logs"
-
-
-class RecalledMessages(BaseModel):
-    """
-    用于存储撤回消息记录的模型。
-    """
-
-    message_id = TextField(index=True)  # 被撤回的消息 ID
-    time = DoubleField()  # 撤回操作发生的时间戳
-    stream_id = TextField()  # 对应的 ChatStreams stream_id
-
-    class Meta:
-        table_name = "recalled_messages"
 
 
 class GraphNodes(BaseModel):
@@ -330,7 +346,7 @@ class GraphNodes(BaseModel):
     created_time = FloatField()  # 创建时间戳
     last_modified = FloatField()  # 最后修改时间戳
 
-    class Meta:
+    class Meta:  # type: ignore
         table_name = "graph_nodes"
 
 
@@ -346,7 +362,7 @@ class GraphEdges(BaseModel):
     created_time = FloatField()  # 创建时间戳
     last_modified = FloatField()  # 最后修改时间戳
 
-    class Meta:
+    class Meta:  # type: ignore
         table_name = "graph_edges"
 
 
@@ -366,10 +382,11 @@ def create_tables():
                 OnlineTime,
                 PersonInfo,
                 Knowledges,
+                Expression,
                 ThinkingLog,
-                RecalledMessages,  # 添加新模型
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
+                Memory,
                 ActionRecords,  # 添加 ActionRecords 到初始化列表
             ]
         )
@@ -391,8 +408,9 @@ def initialize_database():
         OnlineTime,
         PersonInfo,
         Knowledges,
+        Expression,
+        Memory,
         ThinkingLog,
-        RecalledMessages,
         GraphNodes,
         GraphEdges,
         ActionRecords,  # 添加 ActionRecords 到初始化列表

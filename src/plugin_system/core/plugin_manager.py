@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Callable, Tuple, Type, Any
+from typing import Dict, List, Optional, Tuple, Type, Any
 import os
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import getmodule
@@ -6,10 +6,9 @@ from pathlib import Path
 import traceback
 
 from src.common.logger import get_logger
-from src.plugin_system.events.events import EventType
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.core.dependency_manager import dependency_manager
-from src.plugin_system.base.base_plugin import BasePlugin
+from src.plugin_system.base.plugin_base import PluginBase
 from src.plugin_system.base.component_types import ComponentType, PluginInfo, PythonDependency
 from src.plugin_system.utils.manifest_utils import VersionComparator
 
@@ -25,13 +24,11 @@ class PluginManager:
 
     def __init__(self):
         self.plugin_directories: List[str] = []  # 插件根目录列表
-        self.plugin_classes: Dict[str, Type[BasePlugin]] = {}  # 全局插件类注册表，插件名 -> 插件类
+        self.plugin_classes: Dict[str, Type[PluginBase]] = {}  # 全局插件类注册表，插件名 -> 插件类
         self.plugin_paths: Dict[str, str] = {}  # 记录插件名到目录路径的映射，插件名 -> 目录路径
 
-        self.loaded_plugins: Dict[str, BasePlugin] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
+        self.loaded_plugins: Dict[str, PluginBase] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
         self.failed_plugins: Dict[str, str] = {}  # 记录加载失败的插件类及其错误信息，插件名 -> 错误信息
-
-        self.events_subscriptions: Dict[EventType, List[Callable]] = {}
 
         # 确保插件目录存在
         self._ensure_plugin_directories()
@@ -200,31 +197,31 @@ class PluginManager:
         """获取所有启用的插件信息"""
         return list(component_registry.get_enabled_plugins().values())
 
-    def enable_plugin(self, plugin_name: str) -> bool:
-        # -------------------------------- NEED REFACTORING --------------------------------
-        """启用插件"""
-        if plugin_info := component_registry.get_plugin_info(plugin_name):
-            plugin_info.enabled = True
-            # 启用插件的所有组件
-            for component in plugin_info.components:
-                component_registry.enable_component(component.name)
-            logger.debug(f"已启用插件: {plugin_name}")
-            return True
-        return False
+    # def enable_plugin(self, plugin_name: str) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     """启用插件"""
+    #     if plugin_info := component_registry.get_plugin_info(plugin_name):
+    #         plugin_info.enabled = True
+    #         # 启用插件的所有组件
+    #         for component in plugin_info.components:
+    #             component_registry.enable_component(component.name)
+    #         logger.debug(f"已启用插件: {plugin_name}")
+    #         return True
+    #     return False
 
-    def disable_plugin(self, plugin_name: str) -> bool:
-        # -------------------------------- NEED REFACTORING --------------------------------
-        """禁用插件"""
-        if plugin_info := component_registry.get_plugin_info(plugin_name):
-            plugin_info.enabled = False
-            # 禁用插件的所有组件
-            for component in plugin_info.components:
-                component_registry.disable_component(component.name)
-            logger.debug(f"已禁用插件: {plugin_name}")
-            return True
-        return False
+    # def disable_plugin(self, plugin_name: str) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     """禁用插件"""
+    #     if plugin_info := component_registry.get_plugin_info(plugin_name):
+    #         plugin_info.enabled = False
+    #         # 禁用插件的所有组件
+    #         for component in plugin_info.components:
+    #             component_registry.disable_component(component.name)
+    #         logger.debug(f"已禁用插件: {plugin_name}")
+    #         return True
+    #     return False
 
-    def get_plugin_instance(self, plugin_name: str) -> Optional["BasePlugin"]:
+    def get_plugin_instance(self, plugin_name: str) -> Optional["PluginBase"]:
         """获取插件实例
 
         Args:
@@ -387,7 +384,7 @@ class PluginManager:
 
         return loaded_count, failed_count
 
-    def _find_plugin_directory(self, plugin_class: Type[BasePlugin]) -> Optional[str]:
+    def _find_plugin_directory(self, plugin_class: Type[PluginBase]) -> Optional[str]:
         """查找插件类对应的目录路径"""
         try:
             module = getmodule(plugin_class)

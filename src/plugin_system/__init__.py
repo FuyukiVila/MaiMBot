@@ -28,9 +28,9 @@ from .core.plugin_manager import (
 # 导入工具模块
 from .utils import (
     ManifestValidator,
-    ManifestGenerator,
-    validate_plugin_manifest,
-    generate_plugin_manifest,
+    # ManifestGenerator,
+    # validate_plugin_manifest,
+    # generate_plugin_manifest,
 )
 
 from .apis.plugin_register_api import register_plugin
@@ -61,7 +61,7 @@ __all__ = [
     "ConfigField",
     # 工具函数
     "ManifestValidator",
-    "ManifestGenerator",
-    "validate_plugin_manifest",
-    "generate_plugin_manifest",
+    # "ManifestGenerator",
+    # "validate_plugin_manifest",
+    # "generate_plugin_manifest",
 ]

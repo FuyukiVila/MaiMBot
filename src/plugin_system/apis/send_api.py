@@ -50,6 +50,7 @@ async def _send_to_target(
     display_message: str = "",
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
     show_log: bool = True,
 ) -> bool:
@@ -110,6 +111,7 @@ async def _send_to_target(
             is_head=True,
             is_emoji=(message_type == "emoji"),
             thinking_start_time=current_time,
+            reply_to=reply_to_platform_id,
         )
 
         # 发送消息
@@ -135,6 +137,7 @@ async def _send_to_target(
 
 
 async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageRecv]:
+    # sourcery skip: inline-variable, use-named-expression
     """查找要回复的消息
 
     Args:
@@ -182,14 +185,11 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
 
                 # 检查是否有 回复<aaa:bbb> 字段
                 reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-                match = re.search(reply_pattern, translate_text)
-                if match:
+                if match := re.search(reply_pattern, translate_text):
                     aaa = match.group(1)
                     bbb = match.group(2)
                     reply_person_id = get_person_info_manager().get_person_id(platform, bbb)
-                    reply_person_name = await get_person_info_manager().get_value(reply_person_id, "person_name")
-                    if not reply_person_name:
-                        reply_person_name = aaa
+                    reply_person_name = await get_person_info_manager().get_value(reply_person_id, "person_name") or aaa
                     # 在内容前加上回复信息
                     translate_text = re.sub(reply_pattern, f"回复 {reply_person_name}", translate_text, count=1)
 
@@ -204,9 +204,7 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
                         aaa = m.group(1)
                         bbb = m.group(2)
                         at_person_id = get_person_info_manager().get_person_id(platform, bbb)
-                        at_person_name = await get_person_info_manager().get_value(at_person_id, "person_name")
-                        if not at_person_name:
-                            at_person_name = aaa
+                        at_person_name = await get_person_info_manager().get_value(at_person_id, "person_name") or aaa
                         new_content += f"@{at_person_name}"
                         last_end = m.end()
                     new_content += translate_text[last_end:]
@@ -279,6 +277,7 @@ async def text_to_stream(
     stream_id: str,
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
 ) -> bool:
     """向指定流发送文本消息
@@ -293,7 +292,7 @@ async def text_to_stream(
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, reply_to_platform_id, storage_message)
 
 
 async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bool = True) -> bool:
@@ -367,7 +366,14 @@ async def custom_to_stream(
         bool: 是否发送成功
     """
     return await _send_to_target(
-        message_type, content, stream_id, display_message, typing, reply_to, storage_message, show_log
+        message_type=message_type,
+        content=content,
+        stream_id=stream_id,
+        display_message=display_message,
+        typing=typing,
+        reply_to=reply_to,
+        storage_message=storage_message,
+        show_log=show_log,
     )
 
 
@@ -393,7 +399,7 @@ async def text_to_group(
     """
     stream_id = get_chat_manager().get_stream_id(platform, group_id, True)
 
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message=storage_message)
 
 
 async def text_to_user(
@@ -417,7 +423,7 @@ async def text_to_user(
         bool: 是否发送成功
     """
     stream_id = get_chat_manager().get_stream_id(platform, user_id, False)
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message=storage_message)
 
 
 async def emoji_to_group(emoji_base64: str, group_id: str, platform: str = "qq", storage_message: bool = True) -> bool:
@@ -540,7 +546,9 @@ async def custom_to_group(
         bool: 是否发送成功
     """
     stream_id = get_chat_manager().get_stream_id(platform, group_id, True)
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message=storage_message
+    )
 
 
 async def custom_to_user(
@@ -568,7 +576,9 @@ async def custom_to_user(
         bool: 是否发送成功
     """
     stream_id = get_chat_manager().get_stream_id(platform, user_id, False)
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message=storage_message
+    )
 
 
 async def custom_message(
@@ -608,4 +618,6 @@ async def custom_message(
         await send_api.custom_message("audio", audio_base64, "123456", True, reply_to="张三:你好")
     """
     stream_id = get_chat_manager().get_stream_id(platform, target_id, is_group)
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message=storage_message
+    )

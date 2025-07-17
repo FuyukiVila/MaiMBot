@@ -29,12 +29,12 @@ class QAManager:
         # TODO: API-Adapter修改标记
         self.qa_model = LLMRequest(model=global_config.model.lpmm_qa, request_type="lpmm.qa")
 
-    def process_query(self, question: str) -> Tuple[List[Tuple[str, float, float]], Optional[Dict[str, float]]]:
+    async def process_query(self, question: str) -> Tuple[List[Tuple[str, float, float]], Optional[Dict[str, float]]]:
         """处理查询"""
 
         # 生成问题的Embedding
         part_start_time = time.perf_counter()
-        question_embedding = get_embedding(question)
+        question_embedding = await get_embedding(question)
         if question_embedding is None:
             logger.error("生成问题Embedding失败")
             return None
@@ -101,10 +101,10 @@ class QAManager:
         else:
             return None
 
-    def get_knowledge(self, question: str) -> str:
+    async def get_knowledge(self, question: str) -> str:
         """获取知识"""
         # 处理查询
-        processed_result = self.process_query(question)
+        processed_result = await self.process_query(question)
         if processed_result is not None:
             query_res = processed_result[0]
             knowledge = [

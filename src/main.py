@@ -9,7 +9,6 @@ from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
 from src.common.logger import get_logger
@@ -131,7 +130,6 @@ class MainSystem:
         while True:
             tasks = [
                 get_emoji_manager().start_periodic_check_register(),
-                self.remove_recalled_message_task(),
                 self.app.run(),
                 self.server.run(),
             ]
@@ -155,14 +153,14 @@ class MainSystem:
         while True:
             await asyncio.sleep(global_config.memory.memory_build_interval)
             logger.info("正在进行记忆构建")
-            await self.hippocampus_manager.build_memory()
+            await self.hippocampus_manager.build_memory()  # type: ignore
 
     async def forget_memory_task(self):
         """记忆遗忘任务"""
         while True:
             await asyncio.sleep(global_config.memory.forget_memory_interval)
             logger.info("[记忆遗忘] 开始遗忘记忆...")
-            await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)
+            await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)  # type: ignore
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
     async def consolidate_memory_task(self):
@@ -170,7 +168,7 @@ class MainSystem:
         while True:
             await asyncio.sleep(global_config.memory.consolidate_memory_interval)
             logger.info("[记忆整合] 开始整合记忆...")
-            await self.hippocampus_manager.consolidate_memory()
+            await self.hippocampus_manager.consolidate_memory()  # type: ignore
             logger.info("[记忆整合] 记忆整合完成")
 
     @staticmethod
@@ -183,23 +181,6 @@ class MainSystem:
                 logger.info("[表达方式学习] 开始学习表达方式...")
                 await expression_learner.learn_and_store_expression()
                 logger.info("[表达方式学习] 表达方式学习完成")
-
-    # async def print_mood_task(self):
-    #     """打印情绪状态"""
-    #     while True:
-    #         self.mood_manager.print_mood_status()
-    #         await asyncio.sleep(60)
-
-    @staticmethod
-    async def remove_recalled_message_task():
-        """删除撤回消息任务"""
-        while True:
-            try:
-                storage = MessageStorage()
-                await storage.remove_recalled_message(time.time())
-            except Exception:
-                logger.exception("删除撤回消息失败")
-            await asyncio.sleep(3600)
 
 
 async def main():

@@ -107,6 +107,9 @@ class MessageRecv(Message):
         self.is_picid = False
         self.has_picid = False
         self.is_mentioned = None
+
+        self.is_command = False
+
         self.priority_mode = "interest"
         self.priority_info = None
         self.interest_value: float = None  # type: ignore
@@ -184,6 +187,7 @@ class MessageRecvS4U(MessageRecv):
     def __init__(self, message_dict: dict[str, Any]):
         super().__init__(message_dict)
         self.is_gift = False
+        self.is_fake_gift = False
         self.is_superchat = False
         self.gift_info = None
         self.gift_name = None
@@ -192,7 +196,8 @@ class MessageRecvS4U(MessageRecv):
         self.superchat_price = None
         self.superchat_message_text = None
         self.is_screen = False
-
+        self.voice_done = None
+    
     async def process(self) -> None:
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
 
@@ -250,15 +255,20 @@ class MessageRecvS4U(MessageRecv):
             elif segment.type == "gift":
                 self.is_gift = True
                 # 解析gift_info，格式为"名称:数量"
-                name, count = segment.data.split(":", 1)
+                name, count = segment.data.split(":", 1)  # type: ignore
                 self.gift_info = segment.data
                 self.gift_name = name.strip()
                 self.gift_count = int(count.strip())
                 return ""
+            elif segment.type == "voice_done":
+                msg_id = segment.data
+                logger.info(f"voice_done: {msg_id}")
+                self.voice_done = msg_id
+                return ""
             elif segment.type == "superchat":
                 self.is_superchat = True
                 self.superchat_info = segment.data
-                price, message_text = segment.data.split(":", 1)
+                price, message_text = segment.data.split(":", 1)  # type: ignore
                 self.superchat_price = price.strip()
                 self.superchat_message_text = message_text.strip()
 

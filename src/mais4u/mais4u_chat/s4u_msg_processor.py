@@ -92,7 +92,10 @@ class S4UMessageProcessor:
             user_info=userinfo,
             group_info=groupinfo,
         )
-
+        
+        if await self.hadle_if_voice_done(message):
+            return
+        
         # 处理礼物消息，如果消息被暂存则停止当前处理流程
         if not skip_gift_debounce and not await self.handle_if_gift(message):
             return
@@ -105,6 +108,7 @@ class S4UMessageProcessor:
         await self.storage.store_message(message, chat)
 
         s4u_chat = get_s4u_chat_manager().get_or_create_chat(chat)
+
 
         await s4u_chat.add_message(message)
 
@@ -135,17 +139,22 @@ class S4UMessageProcessor:
             screen_manager.set_screen(message.screen_info)
             return True
         return False
-
+    
+    async def hadle_if_voice_done(self, message: MessageRecvS4U):
+        if message.voice_done:
+            s4u_chat = get_s4u_chat_manager().get_or_create_chat(message.chat_stream)
+            s4u_chat.voice_done = message.voice_done
+            return True
+        return False
+    
     async def check_if_fake_gift(self, message: MessageRecvS4U) -> bool:
         """检查消息是否为假礼物"""
         if message.is_gift:
             return False
-
-        gift_keywords = ["送出了礼物", "礼物", "送出了"]
+        
+        gift_keywords = ["送出了礼物", "礼物", "送出了","投喂"]
         if any(keyword in message.processed_plain_text for keyword in gift_keywords):
-            message.processed_plain_text += (
-                "（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分）"
-            )
+            message.is_fake_gift = True
             return True
 
         return False

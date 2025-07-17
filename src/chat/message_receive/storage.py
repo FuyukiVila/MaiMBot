@@ -2,7 +2,7 @@ import re
 import traceback
 from typing import Union
 
-from src.common.database.database_model import Messages, RecalledMessages, Images
+from src.common.database.database_model import Messages, Images
 from src.common.logger import get_logger
 from .chat_stream import ChatStream
 from .message import MessageSending, MessageRecv
@@ -43,6 +43,7 @@ class MessageStorage:
                 priority_info = {}
                 is_emoji = False
                 is_picid = False
+                is_command = False
             else:
                 filtered_display_message = ""
                 interest_value = message.interest_value
@@ -52,6 +53,7 @@ class MessageStorage:
                 priority_info = message.priority_info
                 is_emoji = message.is_emoji
                 is_picid = message.is_picid
+                is_command = message.is_command
 
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()  # type: ignore
@@ -96,33 +98,11 @@ class MessageStorage:
                 priority_info=priority_info,
                 is_emoji=is_emoji,
                 is_picid=is_picid,
+                is_command=is_command,
             )
         except Exception:
             logger.exception("存储消息失败")
             traceback.print_exc()
-
-    @staticmethod
-    async def store_recalled_message(message_id: str, time: str, chat_stream: ChatStream) -> None:
-        """存储撤回消息到数据库"""
-        # Table creation is handled by initialize_database in database_model.py
-        try:
-            RecalledMessages.create(
-                message_id=message_id,
-                time=float(time),  # Assuming time is a string representing a float timestamp
-                stream_id=chat_stream.stream_id,
-            )
-        except Exception:
-            logger.exception("存储撤回消息失败")
-
-    @staticmethod
-    async def remove_recalled_message(time: str) -> None:
-        """删除撤回消息"""
-        try:
-            # Assuming input 'time' is a string timestamp that can be converted to float
-            current_time_float = float(time)
-            RecalledMessages.delete().where(RecalledMessages.time < (current_time_float - 300)).execute()  # type: ignore
-        except Exception:
-            logger.exception("删除撤回消息失败")
 
     # 如果需要其他存储相关的函数，可以在这里添加
     @staticmethod

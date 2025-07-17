@@ -15,13 +15,11 @@ from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.focus_chat.hfc_utils import CycleDetail
-from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.base.component_types import ActionInfo, ChatMode
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
-from ...mais4u.mais4u_chat.priority_manager import PriorityManager
 
 
 ERROR_LOOP_INFO = {
@@ -100,6 +98,7 @@ class HeartFChatting:
         # 循环控制内部状态
         self.running: bool = False
         self._loop_task: Optional[asyncio.Task] = None  # 主循环任务
+        self._energy_task: Optional[asyncio.Task] = None
 
         # 添加循环信息管理相关的属性
         self.history_loop: List[CycleDetail] = []
@@ -114,18 +113,9 @@ class HeartFChatting:
         self.willing_amplifier = 1
         self.willing_manager = get_willing_manager()
 
-        self.reply_mode = self.chat_stream.context.get_priority_mode()
-        if self.reply_mode == "priority":
-            self.priority_manager = PriorityManager(
-                normal_queue_max_size=5,
-            )
-            self.loop_mode = ChatMode.PRIORITY
-        else:
-            self.priority_manager = None
-
         logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
 
-        self.energy_value = 100
+        self.energy_value = 5
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
@@ -138,6 +128,9 @@ class HeartFChatting:
         try:
             # 标记为活动状态，防止重复启动
             self.running = True
+
+            self._energy_task = asyncio.create_task(self._energy_loop())
+            self._energy_task.add_done_callback(self._handle_energy_completion)
 
             self._loop_task = asyncio.create_task(self._main_chat_loop())
             self._loop_task.add_done_callback(self._handle_loop_completion)
@@ -174,6 +167,21 @@ class HeartFChatting:
         self._current_cycle_detail.timers = cycle_timers
         self._current_cycle_detail.end_time = time.time()
 
+    def _handle_energy_completion(self, task: asyncio.Task):
+        if exception := task.exception():
+            logger.error(f"{self.log_prefix} HeartFChatting: 能量循环异常: {exception}")
+            logger.error(traceback.format_exc())
+        else:
+            logger.info(f"{self.log_prefix} HeartFChatting: 能量循环完成")
+
+    async def _energy_loop(self):
+        while self.running:
+            await asyncio.sleep(10)
+            if self.loop_mode == ChatMode.NORMAL:
+                self.energy_value -= 0.3
+                if self.energy_value <= 0.3:
+                    self.energy_value = 0.3
+
     def print_cycle_info(self, cycle_timers):
         # 记录循环信息和计时器结果
         timer_strings = []
@@ -190,12 +198,16 @@ class HeartFChatting:
 
     async def _loopbody(self):
         if self.loop_mode == ChatMode.FOCUS:
-            self.energy_value -= 5 * global_config.chat.focus_value
-            if self.energy_value <= 0:
+            if await self._observe():
+                self.energy_value -= 1 * global_config.chat.focus_value
+            else:
+                self.energy_value -= 3 * global_config.chat.focus_value
+            if self.energy_value <= 1:
+                self.energy_value = 1
                 self.loop_mode = ChatMode.NORMAL
                 return True
 
-            return await self._observe()
+            return True
         elif self.loop_mode == ChatMode.NORMAL:
             new_messages_data = get_raw_msg_by_timestamp_with_chat(
                 chat_id=self.stream_id,
@@ -206,16 +218,29 @@ class HeartFChatting:
                 filter_bot=True,
             )
 
-            if len(new_messages_data) > 4 * global_config.chat.focus_value:
+            if len(new_messages_data) > 3 * global_config.chat.focus_value:
                 self.loop_mode = ChatMode.FOCUS
-                self.energy_value = 100
+                self.energy_value = 10 + (len(new_messages_data) / (3 * global_config.chat.focus_value)) * 10
+                return True
+
+            if self.energy_value >= 30 * global_config.chat.focus_value:
+                self.loop_mode = ChatMode.FOCUS
                 return True
 
             if new_messages_data:
                 earliest_messages_data = new_messages_data[0]
                 self.last_read_time = earliest_messages_data.get("time")
 
-                await self.normal_response(earliest_messages_data)
+                if_think = await self.normal_response(earliest_messages_data)
+                if if_think:
+                    factor = max(global_config.chat.focus_value, 0.1)
+                    self.energy_value *= 1.1 / factor
+                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value}")
+                else:
+                    self.energy_value += 0.1 / global_config.chat.focus_value
+                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value}")
+
+                logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value}")
                 return True
 
             await asyncio.sleep(1)
@@ -234,6 +259,7 @@ class HeartFChatting:
     async def _observe(self, message_data: Optional[Dict[str, Any]] = None):
         if not message_data:
             message_data = {}
+        action_type = "no_action"
         # 创建新的循环信息
         cycle_timers, thinking_id = self.start_cycle()
 
@@ -259,7 +285,7 @@ class HeartFChatting:
                 gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str))
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(mode=self.loop_mode)
+                plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
 
             action_result: dict = plan_result.get("action_result", {})  # type: ignore
             action_type, action_data, reasoning, is_parallel = (
@@ -305,15 +331,17 @@ class HeartFChatting:
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
-                await self._send_response(response_set, reply_to_str, loop_start_time)
+                await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
 
                 return True
 
             else:
+                action_message: Dict[str, Any] = message_data or target_message  # type: ignore
+
                 # 动作执行计时
                 with Timer("动作执行", cycle_timers):
                     success, reply_text, command = await self._handle_action(
-                        action_type, reasoning, action_data, cycle_timers, thinking_id
+                        action_type, reasoning, action_data, cycle_timers, thinking_id, action_message
                     )
 
                 loop_info = {
@@ -338,6 +366,9 @@ class HeartFChatting:
 
         if self.loop_mode == ChatMode.NORMAL:
             await self.willing_manager.after_generate_reply_handle(message_data.get("message_id", ""))
+
+        if action_type != "no_reply" and action_type != "no_action":
+            return True
 
         return True
 
@@ -367,6 +398,7 @@ class HeartFChatting:
         action_data: dict,
         cycle_timers: dict,
         thinking_id: str,
+        action_message: dict,
     ) -> tuple[bool, str, str]:
         """
         处理规划动作，使用动作工厂创建相应的动作处理器
@@ -392,6 +424,7 @@ class HeartFChatting:
                     thinking_id=thinking_id,
                     chat_stream=self.chat_stream,
                     log_prefix=self.log_prefix,
+                    action_message=action_message,
                 )
             except Exception as e:
                 logger.error(f"{self.log_prefix} 创建动作处理器时出错: {e}")
@@ -423,136 +456,29 @@ class HeartFChatting:
             traceback.print_exc()
             return False, "", ""
 
-    # async def shutdown(self):
-    #     """优雅关闭HeartFChatting实例，取消活动循环任务"""
-    #     logger.info(f"{self.log_prefix} 正在关闭HeartFChatting...")
-    #     self.running = False  # <-- 在开始关闭时设置标志位
-
-    #     # 记录最终的消息统计
-    #     if self._message_count > 0:
-    #         logger.info(f"{self.log_prefix} 本次focus会话共发送了 {self._message_count} 条消息")
-    #         if self._fatigue_triggered:
-    #             logger.info(f"{self.log_prefix} 因疲惫而退出focus模式")
-
-    #     # 取消循环任务
-    #     if self._loop_task and not self._loop_task.done():
-    #         logger.info(f"{self.log_prefix} 正在取消HeartFChatting循环任务")
-    #         self._loop_task.cancel()
-    #         try:
-    #             await asyncio.wait_for(self._loop_task, timeout=1.0)
-    #             logger.info(f"{self.log_prefix} HeartFChatting循环任务已取消")
-    #         except (asyncio.CancelledError, asyncio.TimeoutError):
-    #             pass
-    #         except Exception as e:
-    #             logger.error(f"{self.log_prefix} 取消循环任务出错: {e}")
-    #     else:
-    #         logger.info(f"{self.log_prefix} 没有活动的HeartFChatting循环任务")
-
-    #     # 清理状态
-    #     self.running = False
-    #     self._loop_task = None
-
-    #     # 重置消息计数器，为下次启动做准备
-    #     self.reset_message_count()
-
-    #     logger.info(f"{self.log_prefix} HeartFChatting关闭完成")
-
-    def adjust_reply_frequency(self):
-        """
-        根据预设规则动态调整回复意愿（willing_amplifier）。
-        - 评估周期：10分钟
-        - 目标频率：由 global_config.chat.talk_frequency 定义（例如 1条/分钟）
-        - 调整逻辑：
-            - 0条回复 -> 5.0x 意愿
-            - 达到目标回复数 -> 1.0x 意愿（基准）
-            - 达到目标2倍回复数 -> 0.2x 意愿
-            - 中间值线性变化
-        - 增益抑制：如果最近5分钟回复过快，则不增加意愿。
-        """
-        # --- 1. 定义参数 ---
-        evaluation_minutes = 10.0
-        target_replies_per_min = global_config.chat.get_current_talk_frequency(
-            self.stream_id
-        )  # 目标频率：e.g. 1条/分钟
-        target_replies_in_window = target_replies_per_min * evaluation_minutes  # 10分钟内的目标回复数
-
-        if target_replies_in_window <= 0:
-            logger.debug(f"[{self.log_prefix}] 目标回复频率为0或负数，不调整意愿放大器。")
-            return
-
-        # --- 2. 获取近期统计数据 ---
-        stats_10_min = get_recent_message_stats(minutes=evaluation_minutes, chat_id=self.stream_id)
-        bot_reply_count_10_min = stats_10_min["bot_reply_count"]
-
-        # --- 3. 计算新的意愿放大器 (willing_amplifier) ---
-        # 基于回复数在 [0, target*2] 区间内进行分段线性映射
-        if bot_reply_count_10_min <= target_replies_in_window:
-            # 在 [0, 目标数] 区间，意愿从 5.0 线性下降到 1.0
-            new_amplifier = 5.0 + (bot_reply_count_10_min - 0) * (1.0 - 5.0) / (target_replies_in_window - 0)
-        elif bot_reply_count_10_min <= target_replies_in_window * 2:
-            # 在 [目标数, 目标数*2] 区间，意愿从 1.0 线性下降到 0.2
-            over_target_cap = target_replies_in_window * 2
-            new_amplifier = 1.0 + (bot_reply_count_10_min - target_replies_in_window) * (0.2 - 1.0) / (
-                over_target_cap - target_replies_in_window
-            )
-        else:
-            # 超过目标数2倍，直接设为最小值
-            new_amplifier = 0.2
-
-        # --- 4. 检查是否需要抑制增益 ---
-        # "如果邻近5分钟内，回复数量 > 频率/2，就不再进行增益"
-        suppress_gain = False
-        if new_amplifier > self.willing_amplifier:  # 仅在计算结果为增益时检查
-            suppression_minutes = 5.0
-            # 5分钟内目标回复数的一半
-            suppression_threshold = (target_replies_per_min / 2) * suppression_minutes  # e.g., (1/2)*5 = 2.5
-            stats_5_min = get_recent_message_stats(minutes=suppression_minutes, chat_id=self.stream_id)
-            bot_reply_count_5_min = stats_5_min["bot_reply_count"]
-
-            if bot_reply_count_5_min > suppression_threshold:
-                suppress_gain = True
-
-        # --- 5. 更新意愿放大器 ---
-        if suppress_gain:
-            logger.debug(
-                f"[{self.log_prefix}] 回复增益被抑制。最近5分钟内回复数 ({bot_reply_count_5_min}) "
-                f"> 阈值 ({suppression_threshold:.1f})。意愿放大器保持在 {self.willing_amplifier:.2f}"
-            )
-            # 不做任何改动
-        else:
-            # 限制最终值在 [0.2, 5.0] 范围内
-            self.willing_amplifier = max(0.2, min(5.0, new_amplifier))
-            logger.debug(
-                f"[{self.log_prefix}] 调整回复意愿。10分钟内回复: {bot_reply_count_10_min} (目标: {target_replies_in_window:.0f}) -> "
-                f"意愿放大器更新为: {self.willing_amplifier:.2f}"
-            )
-
-    async def normal_response(self, message_data: dict) -> None:
+    async def normal_response(self, message_data: dict) -> bool:
         """
         处理接收到的消息。
         在"兴趣"模式下，判断是否回复并生成内容。
         """
 
-        is_mentioned = message_data.get("is_mentioned", False)
-        interested_rate = message_data.get("interest_rate", 0.0) * self.willing_amplifier
-
-        reply_probability = (
-            1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0
-        )  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
-
-        # 意愿管理器：设置当前message信息
+        interested_rate = message_data.get("interest_value", 0.0) * self.willing_amplifier
+    
         self.willing_manager.setup(message_data, self.chat_stream)
+    
+    
+        reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
 
-        # 获取回复概率
-        # 仅在未被提及或基础概率不为1时查询意愿概率
+        talk_frequency = -1.00
+
         if reply_probability < 1:  # 简化逻辑，如果未提及 (reply_probability 为 0)，则获取意愿概率
-            # is_willing = True
-            reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
-
             additional_config = message_data.get("additional_config", {})
             if additional_config and "maimcore_reply_probability_gain" in additional_config:
                 reply_probability += additional_config["maimcore_reply_probability_gain"]
                 reply_probability = min(max(reply_probability, 0), 1)  # 确保概率在 0-1 之间
+            
+            talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+            reply_probability = talk_frequency * reply_probability
 
         # 处理表情包
         if message_data.get("is_emoji") or message_data.get("is_picid"):
@@ -560,7 +486,10 @@ class HeartFChatting:
 
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
-        if reply_probability > 0.1:
+        
+        # logger.info(f"[{mes_name}] 当前聊天频率: {talk_frequency:.2f},兴趣值: {interested_rate:.2f},回复概率: {reply_probability * 100:.1f}%")
+        
+        if reply_probability > 0.05:
             logger.info(
                 f"[{mes_name}]"
                 f"{message_data.get('user_nickname')}:"
@@ -570,9 +499,12 @@ class HeartFChatting:
         if random.random() < reply_probability:
             await self.willing_manager.before_generate_reply_handle(message_data.get("message_id", ""))
             await self._observe(message_data=message_data)
+            return True
 
         # 意愿管理器：注销当前message信息 (无论是否回复，只要处理过就删除)
         self.willing_manager.delete(message_data.get("message_id", ""))
+        return False
+        
 
     async def _generate_response(
         self, message_data: dict, available_actions: Optional[Dict[str, ActionInfo]], reply_to: str
@@ -597,11 +529,14 @@ class HeartFChatting:
             logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
 
-    async def _send_response(self, reply_set, reply_to, thinking_start_time):
+    async def _send_response(self, reply_set, reply_to, thinking_start_time,message_data):
         current_time = time.time()
         new_message_count = message_api.count_new_messages(
             chat_id=self.chat_stream.stream_id, start_time=thinking_start_time, end_time=current_time
         )
+        platform = message_data.get("user_platform", "")
+        user_id = message_data.get("user_id", "")
+        reply_to_platform_id = f"{platform}:{user_id}"
 
         need_reply = new_message_count >= random.randint(2, 4)
 
@@ -616,13 +551,13 @@ class HeartFChatting:
             if not first_replied:
                 if need_reply:
                     await send_api.text_to_stream(
-                        text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, typing=False
+                        text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False
                     )
                 else:
-                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=False)
+                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to_platform_id=reply_to_platform_id, typing=False)
                 first_replied = True
             else:
-                await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=True)
+                await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to_platform_id=reply_to_platform_id, typing=True)
             reply_text += data
 
         return reply_text
