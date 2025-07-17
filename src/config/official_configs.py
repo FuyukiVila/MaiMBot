@@ -385,7 +385,7 @@ class MemoryConfig(ConfigBase):
 
     memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
     """不允许记忆的词列表"""
-    
+
     enable_instant_memory: bool = True
     """是否启用即时记忆"""
 
@@ -452,6 +452,7 @@ class KeywordReactionConfig(ConfigBase):
         for rule in self.keyword_rules + self.regex_rules:
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
+
 
 @dataclass
 class CustomPromptConfig(ConfigBase):

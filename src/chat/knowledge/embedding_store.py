@@ -106,10 +106,10 @@ class EmbeddingStore:
             asyncio.get_running_loop()
             # 如果在事件循环中，使用线程池执行
             import concurrent.futures
-            
+
             def run_in_thread():
                 return asyncio.run(get_embedding(s))
-            
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(run_in_thread)
                 result = future.result()

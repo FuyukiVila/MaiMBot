@@ -368,27 +368,27 @@ class DefaultReplyer:
             return ""
 
         instant_memory = None
-        
+
         running_memories = await self.memory_activator.activate_memory_with_chat_history(
             target_message=target, chat_history_prompt=chat_history
         )
-        
+
         if global_config.memory.enable_instant_memory:
             asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history))
 
             instant_memory = await self.instant_memory.get_memory(target)
             logger.info(f"即时记忆：{instant_memory}")
-            
+
         if not running_memories:
             return ""
 
         memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
         for running_memory in running_memories:
             memory_str += f"- {running_memory['content']}\n"
-        
+
         if instant_memory:
             memory_str += f"- {instant_memory}\n"
-            
+
         return memory_str
 
     async def build_tool_info(self, chat_history, reply_data: Optional[Dict], enable_tool: bool = True):
@@ -631,9 +631,7 @@ class DefaultReplyer:
             self._time_and_run_task(
                 self.build_expression_habits(chat_talking_prompt_short, target), "build_expression_habits"
             ),
-            self._time_and_run_task(
-                self.build_relation_info(reply_data), "build_relation_info"
-            ),
+            self._time_and_run_task(self.build_relation_info(reply_data), "build_relation_info"),
             self._time_and_run_task(self.build_memory_block(chat_talking_prompt_short, target), "build_memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, reply_data, enable_tool=enable_tool), "build_tool_info"

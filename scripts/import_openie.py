@@ -34,6 +34,8 @@ else:
     raise FileNotFoundError(".env 文件不存在，请创建并配置所需的环境变量")
 
 env_mask = {key: os.getenv(key) for key in os.environ}
+
+
 def scan_provider(env_config: dict):
     provider = {}
 
@@ -63,6 +65,7 @@ def scan_provider(env_config: dict):
         if config["url"] is None or config["key"] is None:
             logger.error(f"provider 内容：{config}\nenv_config 内容：{env_config}")
             raise ValueError(f"请检查 '{provider_name}' 提供商配置是否丢失 BASE_URL 或 KEY 环境变量")
+
 
 def ensure_openie_dir():
     """确保OpenIE数据目录存在"""

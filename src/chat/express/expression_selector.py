@@ -93,6 +93,7 @@ class ExpressionSelector:
             stream_type = parts[2]
             is_group = stream_type == "group"
             import hashlib
+
             if is_group:
                 components = [platform, str(id_str)]
             else:
@@ -125,26 +126,32 @@ class ExpressionSelector:
         for cid in related_chat_ids:
             style_query = Expression.select().where((Expression.chat_id == cid) & (Expression.type == "style"))
             grammar_query = Expression.select().where((Expression.chat_id == cid) & (Expression.type == "grammar"))
-            style_exprs.extend([
-                {
-                    "situation": expr.situation,
-                    "style": expr.style,
-                    "count": expr.count,
-                    "last_active_time": expr.last_active_time,
-                    "source_id": cid,
-                    "type": "style"
-                } for expr in style_query
-            ])
-            grammar_exprs.extend([
-                {
-                    "situation": expr.situation,
-                    "style": expr.style,
-                    "count": expr.count,
-                    "last_active_time": expr.last_active_time,
-                    "source_id": cid,
-                    "type": "grammar"
-                } for expr in grammar_query
-            ])
+            style_exprs.extend(
+                [
+                    {
+                        "situation": expr.situation,
+                        "style": expr.style,
+                        "count": expr.count,
+                        "last_active_time": expr.last_active_time,
+                        "source_id": cid,
+                        "type": "style",
+                    }
+                    for expr in style_query
+                ]
+            )
+            grammar_exprs.extend(
+                [
+                    {
+                        "situation": expr.situation,
+                        "style": expr.style,
+                        "count": expr.count,
+                        "last_active_time": expr.last_active_time,
+                        "source_id": cid,
+                        "type": "grammar",
+                    }
+                    for expr in grammar_query
+                ]
+            )
         style_num = int(total_num * style_percentage)
         grammar_num = int(total_num * grammar_percentage)
         # 按权重抽样（使用count作为权重）
@@ -178,10 +185,10 @@ class ExpressionSelector:
                 updates_by_key[key] = expr
         for (chat_id, expr_type, situation, style), _expr in updates_by_key.items():
             query = Expression.select().where(
-                (Expression.chat_id == chat_id) &
-                (Expression.type == expr_type) &
-                (Expression.situation == situation) &
-                (Expression.style == style)
+                (Expression.chat_id == chat_id)
+                & (Expression.type == expr_type)
+                & (Expression.situation == situation)
+                & (Expression.style == style)
             )
             if query.exists():
                 expr_obj = query.get()

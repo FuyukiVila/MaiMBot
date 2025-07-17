@@ -109,13 +109,18 @@ class NoReplyAction(BaseAction):
                         interest_value = msg_dict.get("interest_value", 0.0)
                         if text:
                             accumulated_interest += interest_value
-                    
+
                     talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
                     # 只在兴趣值变化时输出log
-                    if not hasattr(self, "_last_accumulated_interest") or accumulated_interest != self._last_accumulated_interest:
-                        logger.info(f"{self.log_prefix} 当前累计兴趣值: {accumulated_interest:.2f}, 当前聊天频率: {talk_frequency:.2f}")
+                    if (
+                        not hasattr(self, "_last_accumulated_interest")
+                        or accumulated_interest != self._last_accumulated_interest
+                    ):
+                        logger.info(
+                            f"{self.log_prefix} 当前累计兴趣值: {accumulated_interest:.2f}, 当前聊天频率: {talk_frequency:.2f}"
+                        )
                         self._last_accumulated_interest = accumulated_interest
-                    
+
                     if accumulated_interest >= self._interest_exit_threshold / talk_frequency:
                         logger.info(
                             f"{self.log_prefix} 累计兴趣值达到{accumulated_interest:.2f}(>{self._interest_exit_threshold / talk_frequency})，结束等待"

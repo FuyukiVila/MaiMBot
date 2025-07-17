@@ -120,7 +120,9 @@ class ReplyAction(BaseAction):
                 data = reply_seg[1]
                 if not first_replied:
                     if need_reply:
-                        await self.send_text(content=data, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False)
+                        await self.send_text(
+                            content=data, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False
+                        )
                         first_replied = True
                     else:
                         await self.send_text(content=data, reply_to_platform_id=reply_to_platform_id, typing=False)

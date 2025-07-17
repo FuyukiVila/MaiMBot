@@ -64,9 +64,7 @@ class PromptBuilder:
         self.prompt_built = ""
         self.activate_messages = ""
 
-    
     async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
-
         style_habits = []
         grammar_habits = []
 
@@ -163,7 +161,7 @@ class PromptBuilder:
                     elif msg_dict.get("reply_to") and talk_type != msg_dict.get("reply_to"):
                         background_dialogue_list.append(msg_dict)
                     # else:
-                        # background_dialogue_list.append(msg_dict)
+                    # background_dialogue_list.append(msg_dict)
                 elif msg_user_id == target_user_id:
                     core_dialogue_list.append(msg_dict)
                 else:
@@ -222,11 +220,11 @@ class PromptBuilder:
 
     def build_gift_info(self, message: MessageRecvS4U):
         if message.is_gift:
-            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"        
+            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"
         else:
             if message.is_fake_gift:
                 return f"{message.processed_plain_text}（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分，如果对方在发假的礼物骗你，请反击）"
-        
+
         return ""
 
     def build_sc_info(self, message: MessageRecvS4U):
@@ -241,7 +239,9 @@ class PromptBuilder:
         sender_name: str = "某人",
     ) -> str:
         relation_info_block, memory_block, expression_habits_block = await asyncio.gather(
-            self.build_relation_info(chat_stream), self.build_memory_block(message_txt), self.build_expression_habits(chat_stream, message_txt, sender_name)
+            self.build_relation_info(chat_stream),
+            self.build_memory_block(message_txt),
+            self.build_expression_habits(chat_stream, message_txt, sender_name),
         )
 
         core_dialogue_prompt, background_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)

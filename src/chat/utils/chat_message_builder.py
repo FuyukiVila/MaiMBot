@@ -10,7 +10,7 @@ from src.common.message_repository import find_messages, count_messages
 from src.common.database.database_model import ActionRecords
 from src.common.database.database_model import Images
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
-from src.chat.utils.utils import translate_timestamp_to_human_readable,assign_message_ids
+from src.chat.utils.utils import translate_timestamp_to_human_readable, assign_message_ids
 
 install(extra_lines=3)
 
@@ -654,6 +654,7 @@ async def build_readable_messages_with_list(
 
     return formatted_string, details_list
 
+
 def build_readable_messages_with_id(
     messages: List[Dict[str, Any]],
     replace_bot_name: bool = True,
@@ -669,9 +670,9 @@ def build_readable_messages_with_id(
     允许通过参数控制格式化行为。
     """
     message_id_list = assign_message_ids(messages)
-    
+
     formatted_string = build_readable_messages(
-        messages = messages,
+        messages=messages,
         replace_bot_name=replace_bot_name,
         merge_messages=merge_messages,
         timestamp_mode=timestamp_mode,
@@ -682,10 +683,7 @@ def build_readable_messages_with_id(
         message_id_list=message_id_list,
     )
 
-    
-    
-    
-    return formatted_string , message_id_list
+    return formatted_string, message_id_list
 
 
 def build_readable_messages(
@@ -770,7 +768,13 @@ def build_readable_messages(
     if read_mark <= 0:
         # 没有有效的 read_mark，直接格式化所有消息
         formatted_string, _, pic_id_mapping, _ = _build_readable_messages_internal(
-            copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate, show_pic=show_pic, message_id_list=message_id_list
+            copy_messages,
+            replace_bot_name,
+            merge_messages,
+            timestamp_mode,
+            truncate,
+            show_pic=show_pic,
+            message_id_list=message_id_list,
         )
 
         # 生成图片映射信息并添加到最前面

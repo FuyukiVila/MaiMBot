@@ -47,6 +47,8 @@ else:
     raise FileNotFoundError(".env 文件不存在，请创建并配置所需的环境变量")
 
 env_mask = {key: os.getenv(key) for key in os.environ}
+
+
 def scan_provider(env_config: dict):
     provider = {}
 

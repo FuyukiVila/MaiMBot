@@ -28,8 +28,8 @@ def register_plugin(cls):
 
     return cls
 
-def register_event_plugin(cls, *args, **kwargs):
 
+def register_event_plugin(cls, *args, **kwargs):
     """事件插件注册装饰器
 
     用法:

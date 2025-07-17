@@ -33,11 +33,10 @@ class MessageSenderContainer:
         self._task: Optional[asyncio.Task] = None
         self._paused_event = asyncio.Event()
         self._paused_event.set()  # 默认设置为非暂停状态
-        
+
         self.msg_id = ""
-        
+
         self.voice_done = ""
-        
 
     async def add_message(self, chunk: str):
         """向队列中添加一个消息块。"""
@@ -127,7 +126,7 @@ class MessageSenderContainer:
                     reply_to=f"{self.original_message.message_info.user_info.platform}:{self.original_message.message_info.user_info.user_id}",
                 )
                 await bot_message.process()
-                
+
                 await self.storage.store_message(bot_message, self.chat_stream)
 
             except Exception as e:
@@ -191,11 +190,10 @@ class S4UChat:
         self._is_replying = False
         self.gpt = S4UStreamGenerator()
         self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
-        
-        
+
         self.msg_id = ""
         self.voice_done = ""
-        
+
         logger.info(f"[{self.stream_name}] S4UChat with two-queue system initialized.")
 
     def _get_priority_info(self, message: MessageRecv) -> dict:
@@ -218,7 +216,7 @@ class S4UChat:
     def _get_interest_score(self, user_id: str) -> float:
         """获取用户的兴趣分，默认为1.0"""
         return self.interest_dict.get(user_id, 1.0)
-    
+
     def go_processing(self):
         if self.voice_done == self.msg_id:
             return True
@@ -441,7 +439,7 @@ class S4UChat:
         await asyncio.sleep(random_delay)
         chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
         await chat_watching.on_message_received()
-        
+
     def get_processing_message_id(self):
         self.msg_id = f"{time.time()}_{random.randint(1000, 9999)}"
 
@@ -449,12 +447,12 @@ class S4UChat:
         """为单个消息生成文本回复。整个过程可以被中断。"""
         self._is_replying = True
         total_chars_sent = 0  # 跟踪发送的总字符数
-        
+
         self.get_processing_message_id()
-        
+
         if s4u_config.enable_loading_indicator:
             await send_loading(self.stream_id, ".........")
-        
+
         # 视线管理：开始生成回复时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
         asyncio.create_task(self.delay_change_watching_state())
@@ -486,7 +484,7 @@ class S4UChat:
             # 等待所有文本消息发送完成
             await sender_container.close()
             await sender_container.join()
-            
+
             start_time = time.time()
             while not self.go_processing():
                 if time.time() - start_time > 60:
@@ -494,7 +492,7 @@ class S4UChat:
                     break
                 logger.info(f"[{self.stream_name}] 等待消息发送完成...")
                 await asyncio.sleep(0.3)
-            
+
             logger.info(f"[{self.stream_name}] 所有文本块处理完毕。")
 
         except asyncio.CancelledError:

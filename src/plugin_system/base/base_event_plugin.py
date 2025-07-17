@@ -1,7 +1,4 @@
-from abc import abstractmethod
-
 from .plugin_base import PluginBase
-from src.common.logger import get_logger
 
 
 class BaseEventPlugin(PluginBase):

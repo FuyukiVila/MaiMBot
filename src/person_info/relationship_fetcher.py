@@ -96,7 +96,7 @@ class RelationshipFetcher:
             if not self.info_fetched_cache[person_id]:
                 del self.info_fetched_cache[person_id]
 
-    async def build_relation_info(self, person_id, points_num = 3):
+    async def build_relation_info(self, person_id, points_num=3):
         # 清理过期的信息缓存
         self._cleanup_expired_cache()
 

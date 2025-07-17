@@ -49,7 +49,7 @@ class ChatMood:
 
         chat_manager = get_chat_manager()
         self.chat_stream = chat_manager.get_stream(self.chat_id)
-        
+
         if not self.chat_stream:
             raise ValueError(f"Chat stream for chat_id {chat_id} not found")
 
