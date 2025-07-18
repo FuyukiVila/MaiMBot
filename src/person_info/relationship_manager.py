@@ -238,7 +238,15 @@ class RelationshipManager:
         try:
             points = repair_json(points)
             points_data = json.loads(points)
-            if points_data == "none" or not points_data or points_data.get("point") == "none":
+            should_skip = False
+            if points_data == "none" or not points_data:
+                should_skip = True
+            elif isinstance(points_data, dict) and points_data.get("point") == "none":
+                should_skip = True
+            elif isinstance(points_data, list) and not points_data:  # 空列表
+                should_skip = True
+
+            if should_skip:
                 points_list = []
             else:
                 # logger.info(f"points_data: {points_data}")
@@ -246,8 +254,12 @@ class RelationshipManager:
                     points_data = points_data["points"]
                 if not isinstance(points_data, list):
                     points_data = [points_data]
-                # 添加可读时间到每个point
-                points_list = [(item["point"], float(item["weight"]), current_time) for item in points_data]
+                # 添加可读时间到每个point，并过滤掉 "none" 的情况
+                points_list = [
+                    (item["point"], float(item["weight"]), current_time)
+                    for item in points_data
+                    if item.get("point") != "none"
+                ]
 
                 original_points_list = list(points_list)
                 points_list.clear()
