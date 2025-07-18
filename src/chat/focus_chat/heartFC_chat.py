@@ -463,7 +463,7 @@ class HeartFChatting:
         """
 
         interested_rate = (message_data.get("interest_value") or 0.0) * self.willing_amplifier
-    
+
         self.willing_manager.setup(message_data, self.chat_stream)
 
         reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))

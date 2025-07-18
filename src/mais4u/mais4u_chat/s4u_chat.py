@@ -36,9 +36,9 @@ class MessageSenderContainer:
         self._paused_event.set()  # 默认设置为非暂停状态
 
         self.msg_id = ""
-        
+
         self.last_msg_id = ""
-        
+
         self.voice_done = ""
 
     async def add_message(self, chunk: str):
@@ -436,12 +436,10 @@ class S4UChat:
             except Exception as e:
                 logger.error(f"[{self.stream_name}] Message processor main loop error: {e}", exc_info=True)
                 await asyncio.sleep(1)
-                
-        
+
     def get_processing_message_id(self):
         self.last_msg_id = self.msg_id
         self.msg_id = f"{time.time()}_{random.randint(1000, 9999)}"
-
 
     async def _generate_and_send(self, message: MessageRecv):
         """为单个消息生成文本回复。整个过程可以被中断。"""
@@ -449,11 +447,10 @@ class S4UChat:
         total_chars_sent = 0  # 跟踪发送的总字符数
 
         self.get_processing_message_id()
-        
+
         # 视线管理：开始生成回复时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
-        
-        
+
         await chat_watching.on_reply_start()
 
         sender_container = MessageSenderContainer(self.chat_stream, message)
@@ -464,7 +461,7 @@ class S4UChat:
             logger.info(f"[S4U] 开始为消息生成文本和音频流: '{message.processed_plain_text[:30]}...'")
 
             if s4u_config.enable_streaming_output:
-                logger.info(f"[S4U] 开始流式输出")
+                logger.info("[S4U] 开始流式输出")
                 # 流式输出，边生成边发送
                 gen = self.gpt.generate_response(message, "")
                 async for chunk in gen:
@@ -472,7 +469,7 @@ class S4UChat:
                     await sender_container.add_message(chunk)
                     total_chars_sent += len(chunk)
             else:
-                logger.info(f"[S4U] 开始一次性输出")
+                logger.info("[S4U] 开始一次性输出")
                 # 一次性输出，先收集所有chunk
                 all_chunks = []
                 gen = self.gpt.generate_response(message, "")
@@ -493,16 +490,19 @@ class S4UChat:
                 total_chars_sent = len("麦麦不知道哦")
 
             mood = mood_manager.get_mood_by_chat_id(self.stream_id)
-            await yes_or_no_head(text = total_chars_sent,emotion = mood.mood_state,chat_history=message.processed_plain_text,chat_id=self.stream_id)
+            await yes_or_no_head(
+                text=total_chars_sent,
+                emotion=mood.mood_state,
+                chat_history=message.processed_plain_text,
+                chat_id=self.stream_id,
+            )
 
             # 等待所有文本消息发送完成
             await sender_container.close()
             await sender_container.join()
-            
+
             await chat_watching.on_thinking_finished()
-            
-            
-            
+
             start_time = time.time()
             logged = False
             while not self.go_processing():
@@ -513,7 +513,7 @@ class S4UChat:
                     logger.info(f"[{self.stream_name}] 等待消息发送完成...")
                     logged = True
                 await asyncio.sleep(0.2)
-            
+
             logger.info(f"[{self.stream_name}] 所有文本块处理完毕。")
 
         except asyncio.CancelledError:
@@ -525,7 +525,7 @@ class S4UChat:
             # 回复生成实时展示：清空内容（出错时）
         finally:
             self._is_replying = False
-            
+
             # 视线管理：回复结束时切换视线状态
             chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
             await chat_watching.on_reply_finished()
@@ -553,4 +553,3 @@ class S4UChat:
             await self._processing_task
         except asyncio.CancelledError:
             logger.info(f"处理任务已成功取消: {self.stream_name}")
-        

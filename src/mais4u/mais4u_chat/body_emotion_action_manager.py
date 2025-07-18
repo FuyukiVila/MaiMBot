@@ -1,6 +1,5 @@
 import json
 import time
-import random
 from src.chat.message_receive.message import MessageRecv
 from src.llm_models.utils_model import LLMRequest
 from src.common.logger import get_logger
@@ -33,8 +32,8 @@ BODY_CODE = {
     "帅气的姿势": "010_0190",
     "另一个帅气的姿势": "010_0191",
     "手掌朝前可爱": "010_0210",
-    "平静，双手后放":"平静，双手后放",
-    "思考": "思考"
+    "平静，双手后放": "平静，双手后放",
+    "思考": "思考",
 }
 
 
@@ -94,7 +93,7 @@ class ChatAction:
 
         print(s4u_config.models.motion)
         print(global_config.model.emotion)
-        
+
         self.action_model = LLMRequest(
             model=global_config.model.emotion,
             temperature=0.7,
@@ -105,7 +104,7 @@ class ChatAction:
 
     async def send_action_update(self):
         """发送动作更新到前端"""
-        
+
         body_code = BODY_CODE.get(self.body_action, "")
         await send_api.custom_to_stream(
             message_type="body_action",
@@ -114,8 +113,6 @@ class ChatAction:
             storage_message=False,
             show_log=True,
         )
-        
-        
 
     async def update_action_by_message(self, message: MessageRecv):
         self.regression_count = 0
@@ -146,13 +143,13 @@ class ChatAction:
 
         prompt_personality = global_config.personality.personality_core
         indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
-        
+
         try:
             # 冷却池处理：过滤掉冷却中的动作
             self._update_body_action_cooldown()
             available_actions = [k for k in BODY_CODE.keys() if k not in self.body_action_cooldown]
             all_actions = "\n".join(available_actions)
-            
+
             prompt = await global_prompt_manager.format_prompt(
                 "change_action_prompt",
                 chat_talking_prompt=chat_talking_prompt,
@@ -212,7 +209,6 @@ class ChatAction:
         prompt_personality = global_config.personality.personality_core
         indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
         try:
-
             # 冷却池处理：过滤掉冷却中的动作
             self._update_body_action_cooldown()
             available_actions = [k for k in BODY_CODE.keys() if k not in self.body_action_cooldown]
@@ -303,9 +299,6 @@ class ActionManager:
         new_action_state = ChatAction(chat_id)
         self.action_state_list.append(new_action_state)
         return new_action_state
-
-
-
 
 
 init_prompt()

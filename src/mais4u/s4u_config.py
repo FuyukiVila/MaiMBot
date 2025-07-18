@@ -11,9 +11,11 @@ from src.common.logger import get_logger
 
 logger = get_logger("s4u_config")
 
+
 # 新增：兼容dict和tomlkit Table
 def is_dict_like(obj):
     return isinstance(obj, (dict, Table))
+
 
 # 新增：递归将Table转为dict
 def table_to_dict(obj):
@@ -25,6 +27,7 @@ def table_to_dict(obj):
         return [table_to_dict(i) for i in obj]
     else:
         return obj
+
 
 # 获取mais4u模块目录
 MAIS4U_ROOT = os.path.dirname(__file__)
@@ -239,7 +242,6 @@ class S4UConfig(S4UConfigBase):
     """S4U模型配置"""
 
     # 兼容性字段，保持向后兼容
-
 
 
 @dataclass

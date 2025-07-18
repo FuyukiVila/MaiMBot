@@ -254,7 +254,7 @@ class PromptBuilder:
         screen_info = screen_manager.get_screen_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        
+
         mood = mood_manager.get_mood_by_chat_id(chat_stream.stream_id)
 
         template_name = "s4u_prompt"

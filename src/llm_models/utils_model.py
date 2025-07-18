@@ -343,19 +343,17 @@ class LLMRequest:
                     headers["Accept"] = "text/event-stream"
                 async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
                     post_kwargs = {"headers": headers}
-                    #form-data数据上传方式不同
+                    # form-data数据上传方式不同
                     if file_bytes:
                         post_kwargs["data"] = request_content["payload"]
                     else:
                         post_kwargs["json"] = request_content["payload"]
 
-                    async with session.post(                            
-                        request_content["api_url"], **post_kwargs
-                    ) as response:
+                    async with session.post(request_content["api_url"], **post_kwargs) as response:
                         handled_result = await self._handle_response(
                             response, request_content, retry, response_handler, user_id, request_type, endpoint
                         )
-                        return handled_result             
+                        return handled_result
 
             except Exception as e:
                 handled_payload, count_delta = await self._handle_exception(e, retry, request_content)
@@ -689,15 +687,14 @@ class LLMRequest:
             logger.warning(f"暂不支持的文件类型: {file_format}")
 
         data.add_field(
-            "file",io.BytesIO(file_bytes),
+            "file",
+            io.BytesIO(file_bytes),
             filename=f"file.{file_format}",
-            content_type=f'{content_type}' # 根据实际文件类型设置
+            content_type=f"{content_type}",  # 根据实际文件类型设置
         )
-        data.add_field(
-            "model", self.model_name
-        )
+        data.add_field("model", self.model_name)
         return data
-    
+
     async def _build_payload(self, prompt: str, image_base64: str = None, image_format: str = None) -> dict:
         """构建请求体"""
         # 复制一份参数，避免直接修改 self.params
@@ -826,9 +823,11 @@ class LLMRequest:
 
     async def generate_response_for_voice(self, voice_bytes: bytes) -> Tuple:
         """根据输入的语音文件生成模型的异步响应"""
-        response = await self._execute_request(endpoint="/audio/transcriptions",file_bytes=voice_bytes, file_format='wav')
+        response = await self._execute_request(
+            endpoint="/audio/transcriptions", file_bytes=voice_bytes, file_format="wav"
+        )
         return response
-    
+
     async def generate_response_async(self, prompt: str, **kwargs) -> Union[str, Tuple]:
         """异步方式根据输入的提示生成模型的响应"""
         # 构建请求体，不硬编码max_tokens

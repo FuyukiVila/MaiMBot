@@ -1,8 +1,3 @@
-import asyncio
-import time
-from enum import Enum
-from typing import Optional
-
 from src.common.logger import get_logger
 from src.plugin_system.apis import send_api
 
@@ -51,6 +46,7 @@ HEAD_CODE = {
     "看向正前方": "(0,0,0)",
 }
 
+
 class ChatWatching:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
@@ -60,13 +56,13 @@ class ChatWatching:
         await send_api.custom_to_stream(
             message_type="state", content="start_thinking", stream_id=self.chat_id, storage_message=False
         )
-        
+
     async def on_reply_finished(self):
         """生成回复完毕时调用"""
         await send_api.custom_to_stream(
             message_type="state", content="finish_reply", stream_id=self.chat_id, storage_message=False
         )
-        
+
     async def on_thinking_finished(self):
         """思考完毕时调用"""
         await send_api.custom_to_stream(
@@ -78,7 +74,7 @@ class ChatWatching:
         await send_api.custom_to_stream(
             message_type="state", content="start_viewing", stream_id=self.chat_id, storage_message=False
         )
-    
+
 
 class WatchingManager:
     def __init__(self):
@@ -97,6 +93,7 @@ class WatchingManager:
         logger.info(f"为chat {chat_id}创建新的视线管理器")
 
         return new_watching
+
 
 # 全局视线管理器实例
 watching_manager = WatchingManager()
