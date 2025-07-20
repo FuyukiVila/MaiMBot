@@ -30,7 +30,7 @@ def _get_kg_dir():
     """
     安全地获取KG数据目录路径
     """
-    root_path = local_storage["root_path"]
+    root_path: str = local_storage["root_path"]
     if root_path is None:
         # 如果 local_storage 中没有 root_path，使用当前文件的相对路径作为备用
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +38,7 @@ def _get_kg_dir():
         logger.warning(f"local_storage 中未找到 root_path，使用备用路径: {root_path}")
 
     # 获取RAG数据目录
-    rag_data_dir = global_config["persistence"]["rag_data_dir"]
+    rag_data_dir: str = global_config["persistence"]["rag_data_dir"]
     if rag_data_dir is None:
         kg_dir = os.path.join(root_path, "data/rag")
     else:
@@ -91,11 +91,11 @@ class KGManager:
         """从文件加载KG数据"""
         # 确保文件存在
         if not os.path.exists(self.pg_hash_file_path):
-            raise Exception(f"KG段落hash文件{self.pg_hash_file_path}不存在")
+            raise FileNotFoundError(f"KG段落hash文件{self.pg_hash_file_path}不存在")
         if not os.path.exists(self.ent_cnt_data_path):
-            raise Exception(f"KG实体计数文件{self.ent_cnt_data_path}不存在")
+            raise FileNotFoundError(f"KG实体计数文件{self.ent_cnt_data_path}不存在")
         if not os.path.exists(self.graph_data_path):
-            raise Exception(f"KG图文件{self.graph_data_path}不存在")
+            raise FileNotFoundError(f"KG图文件{self.graph_data_path}不存在")
 
         # 加载段落hash
         with open(self.pg_hash_file_path, "r", encoding="utf-8") as f:
