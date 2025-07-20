@@ -174,9 +174,9 @@ class ChatBot:
         try:
             # 确保所有任务已启动
             await self._ensure_started()
-            
+
             platform = message_data["message_info"].get("platform")
-            
+
             if platform == "amaidesu_default":
                 await self.do_s4u(message_data)
                 return

@@ -493,9 +493,15 @@ class PluginManager:
 
                     # 组件列表
                     if plugin_info.components:
-                        action_components = [c for c in plugin_info.components if c.component_type == ComponentType.ACTION]
-                        command_components = [c for c in plugin_info.components if c.component_type == ComponentType.COMMAND]
-                        event_handler_components = [c for c in plugin_info.components if c.component_type == ComponentType.EVENT_HANDLER]
+                        action_components = [
+                            c for c in plugin_info.components if c.component_type == ComponentType.ACTION
+                        ]
+                        command_components = [
+                            c for c in plugin_info.components if c.component_type == ComponentType.COMMAND
+                        ]
+                        event_handler_components = [
+                            c for c in plugin_info.components if c.component_type == ComponentType.EVENT_HANDLER
+                        ]
 
                         if action_components:
                             action_names = [c.name for c in action_components]
@@ -504,7 +510,7 @@ class PluginManager:
                         if command_components:
                             command_names = [c.name for c in command_components]
                             logger.info(f"    ⚡ Command组件: {', '.join(command_names)}")
-                        
+
                         if event_handler_components:
                             event_handler_names = [c.name for c in event_handler_components]
                             logger.info(f"    📢 EventHandler组件: {', '.join(event_handler_names)}")
