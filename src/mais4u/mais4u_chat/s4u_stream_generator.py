@@ -45,8 +45,8 @@ class S4UStreamGenerator:
             r'[^.。!?？！\n\r]+(?:[.。!?？！\n\r](?![\'"])|$))',  # 匹配直到句子结束符
             re.UNICODE | re.DOTALL,
         )
-        
-    async def build_last_internal_message(self,message:MessageRecvS4U,previous_reply_context:str = ""):
+
+    async def build_last_internal_message(self, message: MessageRecvS4U, previous_reply_context: str = ""):
         person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
@@ -55,11 +55,11 @@ class S4UStreamGenerator:
 
         if message.chat_stream.user_info.user_nickname:
             if person_name:
-                sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+                pass
             else:
-                sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
+                pass
         else:
-            sender_name = f"用户({message.chat_stream.user_info.user_id})"
+            pass
 
         # 构建prompt
         if previous_reply_context:
@@ -70,14 +70,10 @@ class S4UStreamGenerator:
             [这是用户发来的新消息, 你需要结合上下文，对此进行回复]:
             {message.processed_plain_text}
             """
-            return True,message_txt
+            return True, message_txt
         else:
             message_txt = message.processed_plain_text
-            return False,message_txt
-        
-
-            
-    
+            return False, message_txt
 
     async def generate_response(
         self, message: MessageRecvS4U, previous_reply_context: str = ""
@@ -87,7 +83,7 @@ class S4UStreamGenerator:
         self.partial_response = ""
         message_txt = message.processed_plain_text
         if not message.is_internal:
-            interupted,message_txt_added = await self.build_last_internal_message(message,previous_reply_context)
+            interupted, message_txt_added = await self.build_last_internal_message(message, previous_reply_context)
             if interupted:
                 message_txt = message_txt_added
 
@@ -103,7 +99,6 @@ class S4UStreamGenerator:
 
         current_client = self.client_1
         self.current_model_name = self.model_1_name
-
 
         extra_kwargs = {}
         if self.replyer_1_config.get("enable_thinking") is not None:

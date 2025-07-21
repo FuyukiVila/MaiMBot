@@ -41,8 +41,6 @@ class MessageSenderContainer:
 
         self.voice_done = ""
 
-        
-
     async def add_message(self, chunk: str):
         """向队列中添加一个消息块。"""
         await self.queue.put(chunk)
@@ -195,9 +193,9 @@ class S4UChat:
         self._is_replying = False
         self.gpt = S4UStreamGenerator()
         self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
-        
-        self.internal_message :List[MessageRecvS4U] = []
-        
+
+        self.internal_message: List[MessageRecvS4U] = []
+
         self.msg_id = ""
         self.voice_done = ""
 
@@ -241,7 +239,7 @@ class S4UChat:
         # 加上用户的固有兴趣分
         score += self._get_interest_score(message.message_info.user_info.user_id)
         return score
-    
+
     def decay_interest_score(self):
         for person_id, score in self.interest_dict.items():
             if score > 0:
@@ -249,10 +247,9 @@ class S4UChat:
             else:
                 self.interest_dict[person_id] = 0
 
-    async def add_message(self, message: MessageRecvS4U|MessageRecv) -> None:
-        
+    async def add_message(self, message: MessageRecvS4U | MessageRecv) -> None:
         self.decay_interest_score()
-        
+
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         user_id = message.message_info.user_info.user_id
         platform = message.message_info.platform
@@ -404,7 +401,9 @@ class S4UChat:
                             queue_name = "internal"
                             neg_priority = 0
                             entry_count = 0
-                            logger.info(f"[{self.stream_name}] 触发 internal_message 生成回复: {getattr(message, 'processed_plain_text', str(message))[:20]}...")
+                            logger.info(
+                                f"[{self.stream_name}] 触发 internal_message 生成回复: {getattr(message, 'processed_plain_text', str(message))[:20]}..."
+                            )
                             # 不要从 normal 队列取出消息，保留在队列中
                         else:
                             neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
@@ -435,7 +434,9 @@ class S4UChat:
                         neg_priority = 0
                         entry_count = 0
                         queue_name = "internal"
-                        logger.info(f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}...")
+                        logger.info(
+                            f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}..."
+                        )
                     else:
                         continue  # 没有消息了，回去等事件
 

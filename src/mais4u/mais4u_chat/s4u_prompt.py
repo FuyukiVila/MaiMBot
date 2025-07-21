@@ -59,7 +59,7 @@ def init_prompt():
 """,
         "s4u_prompt",  # New template for private CHAT chat
     )
-    
+
     Prompt(
         """
 你的名字是麦麦, 是千石可乐开发的程序，可以在QQ，微信等平台发言，你现在正在哔哩哔哩作为虚拟主播进行直播
@@ -177,7 +177,6 @@ class PromptBuilder:
             timestamp=time.time(),
             limit=300,
         )
-        
 
         talk_type = message.message_info.platform + ":" + str(message.chat_stream.user_info.user_id)
 
@@ -249,21 +248,19 @@ class PromptBuilder:
             all_msg_seg_list.append(msg_seg_str)
             for msg in all_msg_seg_list:
                 core_msg_str += msg
-                
-                
+
         all_dialogue_prompt = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
             limit=20,
-        )        
+        )
         all_dialogue_prompt_str = build_readable_messages(
             all_dialogue_prompt,
             timestamp_mode="normal_no_YMD",
             show_pic=False,
         )
-        
 
-        return core_msg_str, background_dialogue_prompt,all_dialogue_prompt_str
+        return core_msg_str, background_dialogue_prompt, all_dialogue_prompt_str
 
     def build_gift_info(self, message: MessageRecvS4U):
         if message.is_gift:
@@ -278,14 +275,12 @@ class PromptBuilder:
         super_chat_manager = get_super_chat_manager()
         return super_chat_manager.build_superchat_summary_string(message.chat_stream.stream_id)
 
-
     async def build_prompt_normal(
         self,
         message: MessageRecvS4U,
         chat_stream: ChatStream,
         message_txt: str,
     ) -> str:
-        
         person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
@@ -299,16 +294,17 @@ class PromptBuilder:
                 sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
         else:
             sender_name = f"用户({message.chat_stream.user_info.user_id})"
-        
-        
+
         relation_info_block, memory_block, expression_habits_block = await asyncio.gather(
             self.build_relation_info(chat_stream),
             self.build_memory_block(message_txt),
             self.build_expression_habits(chat_stream, message_txt, sender_name),
         )
 
-        core_dialogue_prompt, background_dialogue_prompt,all_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
-        
+        core_dialogue_prompt, background_dialogue_prompt, all_dialogue_prompt = self.build_chat_history_prompts(
+            chat_stream, message
+        )
+
         gift_info = self.build_gift_info(message)
 
         sc_info = self.build_sc_info(message)
@@ -320,7 +316,7 @@ class PromptBuilder:
         mood = mood_manager.get_mood_by_chat_id(chat_stream.stream_id)
 
         template_name = "s4u_prompt"
-        
+
         if not message.is_internal:
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
@@ -338,8 +334,6 @@ class PromptBuilder:
                 mood_state=mood.mood_state,
             )
         else:
-            
-            
             prompt = await global_prompt_manager.format_prompt(
                 "s4u_prompt_internal",
                 time_block=time_block,
@@ -354,7 +348,7 @@ class PromptBuilder:
                 mind=message.processed_plain_text,
                 mood_state=mood.mood_state,
             )
-            
+
         print(prompt)
 
         return prompt

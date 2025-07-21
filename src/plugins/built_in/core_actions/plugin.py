@@ -34,6 +34,7 @@ WAITING_TIME_THRESHOLD = 1200  # 等待新消息时间阈值，单位秒
 
 ENABLE_THINKING = True
 
+
 class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""
 
@@ -132,11 +133,9 @@ class ReplyAction(BaseAction):
 
             # 存储动作记录
             reply_text = f"你对{person_name}进行了回复：{reply_text}"
-            
-            
+
             if ENABLE_THINKING:
                 await mai_thinking_manager.get_mai_think(self.chat_id).do_think_after_response(reply_text)
-            
 
             await self.store_action_info(
                 action_build_into_prompt=False,

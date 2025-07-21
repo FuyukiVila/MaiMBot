@@ -333,11 +333,10 @@ class HeartFChatting:
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
-                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
-                
+                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time, message_data)
+
                 if ENABLE_THINKING:
                     await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
-                
 
                 return True
 

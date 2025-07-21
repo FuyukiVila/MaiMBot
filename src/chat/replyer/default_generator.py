@@ -737,7 +737,7 @@ class DefaultReplyer:
             core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
                 message_list_before_now_long, target_user_id
             )
-            
+
             mai_think = mai_thinking_manager.get_mai_think(chat_id)
             mai_think.memory_block = memory_block
             mai_think.relation_info_block = relation_info
@@ -749,14 +749,13 @@ class DefaultReplyer:
             mai_think.identity = identity_block
             mai_think.sender = sender
             mai_think.target = target
-            
+
             mai_think.chat_info = f"""
 {background_dialogue_prompt}
 --------------------------------
 {time_block}
 这是你和{sender}的对话，你们正在交流中：
 {core_dialogue_prompt}"""
-            
 
             # 使用 s4u 风格的模板
             template_name = "s4u_style_prompt"
@@ -794,7 +793,7 @@ class DefaultReplyer:
             mai_think.identity = identity_block
             mai_think.sender = sender
             mai_think.target = target
-            
+
             # 使用原有的模式
             return await global_prompt_manager.format_prompt(
                 template_name,
