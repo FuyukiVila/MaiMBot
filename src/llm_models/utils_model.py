@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 from datetime import datetime
-from typing import Tuple, Union, Dict, Any
+from typing import Tuple, Union, Dict, Any, Callable
 import aiohttp
 from aiohttp.client import ClientResponse
 from src.common.logger import get_logger
@@ -307,7 +307,7 @@ class LLMRequest:
         file_format: str = None,
         payload: dict = None,
         retry_policy: dict = None,
-        response_handler: callable = None,
+        response_handler: Callable = None,
         user_id: str = "system",
         request_type: str = None,
     ):
@@ -371,11 +371,11 @@ class LLMRequest:
         response: ClientResponse,
         request_content: Dict[str, Any],
         retry_count: int,
-        response_handler: callable,
+        response_handler: Callable,
         user_id,
         request_type,
         endpoint,
-    ) -> Union[Dict[str, Any], None]:
+    ):
         policy = request_content["policy"]
         stream_mode = request_content["stream_mode"]
         if response.status in policy["retry_codes"] or response.status in policy["abort_codes"]:
@@ -482,9 +482,7 @@ class LLMRequest:
         }
         return result
 
-    async def _handle_error_response(
-        self, response: ClientResponse, retry_count: int, policy: Dict[str, Any]
-    ) -> Union[Dict[str, any]]:
+    async def _handle_error_response(self, response: ClientResponse, retry_count: int, policy: Dict[str, Any]):
         if response.status in policy["retry_codes"]:
             wait_time = policy["base_wait"] * (2**retry_count)
             logger.warning(f"模型 {self.model_name} 错误码: {response.status}, 等待 {wait_time}秒后重试")

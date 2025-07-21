@@ -13,8 +13,8 @@ from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
-from src.plugin_system.base.base_command import BaseCommand
+from src.plugin_system.core import component_registry, events_manager  # 导入新插件系统
+from src.plugin_system.base import BaseCommand, EventType
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
 
 
@@ -199,6 +199,9 @@ class ChatBot:
                 if sent_message:  # 这一段只是为了在一切处理前劫持上报的自身消息，用于更新message_id，需要ada支持上报事件，实际测试中不会对正常使用造成任何问题
                     await MessageStorage.update_message(message)
                     return
+
+            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
+                return
 
             get_chat_manager().register_message(message)
 
