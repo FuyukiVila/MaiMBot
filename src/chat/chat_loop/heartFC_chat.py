@@ -21,8 +21,8 @@ from src.plugin_system.base.component_types import ActionInfo, ChatMode
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.mai_thinking.mai_think import mai_thinking_manager
-
-ENABLE_THINKING = True
+from maim_message.message_base import GroupInfo
+from src.mais4u.constant_s4u import ENABLE_S4U
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
@@ -257,6 +257,32 @@ class HeartFChatting:
         person_name = await person_info_manager.get_value(person_id, "person_name")
         return f"{person_name}:{message_data.get('processed_plain_text')}"
 
+    async def send_typing(self):
+        group_info = GroupInfo(platform="amaidesu_default", group_id="114514", group_name="内心")
+
+        chat = await get_chat_manager().get_or_create_stream(
+            platform="amaidesu_default",
+            user_info=None,
+            group_info=group_info,
+        )
+
+        await send_api.custom_to_stream(
+            message_type="state", content="typing", stream_id=chat.stream_id, storage_message=False
+        )
+
+    async def stop_typing(self):
+        group_info = GroupInfo(platform="amaidesu_default", group_id="114514", group_name="内心")
+
+        chat = await get_chat_manager().get_or_create_stream(
+            platform="amaidesu_default",
+            user_info=None,
+            group_info=group_info,
+        )
+
+        await send_api.custom_to_stream(
+            message_type="state", content="stop_typing", stream_id=chat.stream_id, storage_message=False
+        )
+
     async def _observe(self, message_data: Optional[Dict[str, Any]] = None):
         # sourcery skip: hoist-statement-from-if, merge-comparisons, reintroduce-else
         if not message_data:
@@ -266,6 +292,9 @@ class HeartFChatting:
         cycle_timers, thinking_id = self.start_cycle()
 
         logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考[模式：{self.loop_mode}]")
+        
+        if ENABLE_S4U:
+            await self.send_typing()
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             loop_start_time = time.time()
@@ -333,9 +362,14 @@ class HeartFChatting:
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
-                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time, message_data)
-
-                if ENABLE_THINKING:
+                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
+                
+                
+                
+                
+                
+                if ENABLE_S4U:
+                    await self.stop_typing()
                     await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
 
                 return True

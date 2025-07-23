@@ -45,21 +45,23 @@ class S4UStreamGenerator:
             r'[^.。!?？！\n\r]+(?:[.。!?？！\n\r](?![\'"])|$))',  # 匹配直到句子结束符
             re.UNICODE | re.DOTALL,
         )
+        
+        self.chat_stream =None
+        
+    async def build_last_internal_message(self,message:MessageRecvS4U,previous_reply_context:str = ""):
+        # person_id = PersonInfoManager.get_person_id(
+        #     message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
+        # )
+        # person_info_manager = get_person_info_manager()
+        # person_name = await person_info_manager.get_value(person_id, "person_name")
 
-    async def build_last_internal_message(self, message: MessageRecvS4U, previous_reply_context: str = ""):
-        person_id = PersonInfoManager.get_person_id(
-            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
-        )
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
-
-        if message.chat_stream.user_info.user_nickname:
-            if person_name:
-                pass
-            else:
-                pass
-        else:
-            pass
+        # if message.chat_stream.user_info.user_nickname:
+        #     if person_name:
+        #         sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+        #     else:
+        #         sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
+        # else:
+        #     sender_name = f"用户({message.chat_stream.user_info.user_id})"
 
         # 构建prompt
         if previous_reply_context:
@@ -87,10 +89,10 @@ class S4UStreamGenerator:
             if interupted:
                 message_txt = message_txt_added
 
+        message.chat_stream = self.chat_stream
         prompt = await prompt_builder.build_prompt_normal(
             message=message,
             message_txt=message_txt,
-            chat_stream=message.chat_stream,
         )
 
         logger.info(
