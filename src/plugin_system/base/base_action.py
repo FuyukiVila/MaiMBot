@@ -81,6 +81,8 @@ class BaseAction(ABC):
         """FOCUS模式下的激活类型"""
         self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS)
         """NORMAL模式下的激活类型"""
+        self.activation_type = getattr(self.__class__, "activation_type", self.focus_activation_type)
+        """激活类型"""
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
         """当激活类型为RANDOM时的概率"""
         self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")
@@ -143,7 +145,7 @@ class BaseAction(ABC):
                     self.target_id = self.user_id
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
-        logger.info(
+        logger.debug(
             f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}"
         )
 

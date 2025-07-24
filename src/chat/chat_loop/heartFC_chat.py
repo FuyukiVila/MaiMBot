@@ -20,7 +20,7 @@ from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.base.component_types import ActionInfo, ChatMode
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
-from src.chat.mai_thinking.mai_think import mai_thinking_manager
+from src.mais4u.mai_think import mai_thinking_manager
 from maim_message.message_base import GroupInfo
 from src.mais4u.constant_s4u import ENABLE_S4U
 
@@ -236,12 +236,12 @@ class HeartFChatting:
                 if if_think:
                     factor = max(global_config.chat.focus_value, 0.1)
                     self.energy_value *= 1.1 / factor
-                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value}")
+                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
                 else:
                     self.energy_value += 0.1 / global_config.chat.focus_value
-                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value}")
+                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
 
-                logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value}")
+                logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value:.1f}")
                 return True
 
             await asyncio.sleep(1)
@@ -577,9 +577,14 @@ class HeartFChatting:
 
         need_reply = new_message_count >= random.randint(2, 4)
 
-        logger.info(
-            f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
-        )
+        if need_reply:
+            logger.info(
+                f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，使用引用回复"
+            )
+        else:
+            logger.debug(
+                f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，不使用引用回复"
+            )
 
         reply_text = ""
         first_replied = False

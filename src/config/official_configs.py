@@ -17,6 +17,9 @@ from src.config.config_base import ConfigBase
 @dataclass
 class BotConfig(ConfigBase):
     """QQ机器人配置类"""
+    
+    platform: str
+    """平台"""
 
     qq_account: str
     """QQ账号"""
@@ -105,9 +108,6 @@ class ChatConfig(ConfigBase):
 
     focus_value: float = 1.0
     """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
-
-    enable_asr: bool = False
-    """是否启用语音识别"""
 
     def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
@@ -309,6 +309,13 @@ class ToolConfig(ConfigBase):
 
     enable_in_focus_chat: bool = True
     """是否在专注聊天中启用工具"""
+    
+@dataclass
+class VoiceConfig(ConfigBase):
+    """语音识别配置类"""
+
+    enable_asr: bool = False
+    """是否启用语音识别"""
 
 
 @dataclass
