@@ -447,8 +447,6 @@ class StatisticOutputTask(AsyncTask):
                     break
         return stats
 
-    
-
     def _collect_all_statistics(self, now: datetime) -> Dict[str, Dict[str, Any]]:
         """
         收集各时间段的统计数据

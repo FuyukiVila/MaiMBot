@@ -221,6 +221,7 @@ def locally_disable_component(component_name: str, component_type: ComponentType
         case _:
             raise ValueError(f"未知 component type: {component_type}")
 
+
 def get_locally_disabled_components(stream_id: str, component_type: ComponentType) -> list[str]:
     """
     获取指定消息流中禁用的组件列表。

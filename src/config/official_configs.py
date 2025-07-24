@@ -17,7 +17,7 @@ from src.config.config_base import ConfigBase
 @dataclass
 class BotConfig(ConfigBase):
     """QQ机器人配置类"""
-    
+
     platform: str
     """平台"""
 
@@ -309,7 +309,8 @@ class ToolConfig(ConfigBase):
 
     enable_in_focus_chat: bool = True
     """是否在专注聊天中启用工具"""
-    
+
+
 @dataclass
 class VoiceConfig(ConfigBase):
     """语音识别配置类"""

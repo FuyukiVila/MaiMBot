@@ -240,7 +240,7 @@ class ComponentRegistry:
         except Exception as e:
             logger.error(f"移除组件 {component_name} 时发生错误: {e}")
             return False
-    
+
     def remove_plugin_registry(self, plugin_name: str) -> bool:
         """移除插件注册信息
 

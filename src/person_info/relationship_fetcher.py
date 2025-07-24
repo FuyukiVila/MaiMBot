@@ -361,7 +361,6 @@ class RelationshipFetcher:
             logger.error(f"{self.log_prefix} 执行信息提取时出错: {e}")
             logger.error(traceback.format_exc())
 
-
     async def _save_info_to_cache(self, person_id: str, info_type: str, info_content: str):
         # sourcery skip: use-next
         """将提取到的信息保存到 person_info 的 info_list 字段中

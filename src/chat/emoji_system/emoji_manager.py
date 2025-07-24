@@ -857,6 +857,7 @@ class EmojiManager:
             existing_description = None
             try:
                 from src.common.database.database_model import Images
+
                 existing_image = Images.get_or_none((Images.emoji_hash == image_hash) & (Images.type == "emoji"))
                 if existing_image and existing_image.description:
                     existing_description = existing_image.description
@@ -877,7 +878,9 @@ class EmojiManager:
                     prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，描述一下表情包表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
                     description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, "jpg")
                 else:
-                    prompt = "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
+                    prompt = (
+                        "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
+                    )
                     description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, image_format)
 
             # 审核表情包

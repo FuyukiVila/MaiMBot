@@ -18,6 +18,7 @@ from src.mais4u.mais4u_chat.screen_manager import screen_manager
 from src.chat.express.expression_selector import expression_selector
 from .s4u_mood_manager import mood_manager
 from src.mais4u.mais4u_chat.internal_manager import internal_manager
+
 logger = get_logger("prompt")
 
 
@@ -96,7 +97,7 @@ class PromptBuilder:
     def __init__(self):
         self.prompt_built = ""
         self.activate_messages = ""
-    
+
     async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
         style_habits = []
         grammar_habits = []
@@ -149,13 +150,13 @@ class PromptBuilder:
         relation_prompt = ""
         if global_config.relationship.enable_relationship and who_chat_in_group:
             relationship_fetcher = relationship_fetcher_manager.get_fetcher(chat_stream.stream_id)
-            
+
             # 将 (platform, user_id, nickname) 转换为 person_id
             person_ids = []
             for person in who_chat_in_group:
                 person_id = PersonInfoManager.get_person_id(person[0], person[1])
                 person_ids.append(person_id)
-            
+
             # 使用 RelationshipFetcher 的 build_relation_info 方法，设置 points_num=3 保持与原来相同的行为
             relation_info_list = await asyncio.gather(
                 *[relationship_fetcher.build_relation_info(person_id, points_num=3) for person_id in person_ids]
@@ -288,9 +289,8 @@ class PromptBuilder:
         message: MessageRecvS4U,
         message_txt: str,
     ) -> str:
-        
         chat_stream = message.chat_stream
-        
+
         person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
@@ -320,7 +320,7 @@ class PromptBuilder:
         sc_info = self.build_sc_info(message)
 
         screen_info = screen_manager.get_screen_str()
-        
+
         internal_state = internal_manager.get_internal_state_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -361,7 +361,7 @@ class PromptBuilder:
                 mind=message.processed_plain_text,
                 mood_state=mood.mood_state,
             )
-            
+
         # print(prompt)
 
         return prompt

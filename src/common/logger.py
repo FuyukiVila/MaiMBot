@@ -528,7 +528,7 @@ class ModuleColoredConsoleRenderer:
         if logger_name:
             # 获取别名，如果没有别名则使用原名称
             display_name = MODULE_ALIASES.get(logger_name, logger_name)
-            
+
             if self._colors and self._enable_module_colors:
                 if module_color:
                     module_part = f"{module_color}[{display_name}]{RESET_COLOR}"
@@ -745,9 +745,6 @@ def configure_logging(
         root_logger.setLevel(getattr(logging, level.upper()))
 
 
-
-
-
 def reload_log_config():
     """重新加载日志配置"""
     global LOG_CONFIG
@@ -943,7 +940,7 @@ def show_module_colors():
             demo_logger.info(f"这是 {module_name} 模块的颜色效果")
 
     print("=== 颜色展示结束 ===\n")
-    
+
     # 显示别名映射表
     if MODULE_ALIASES:
         print("=== 当前别名映射 ===")

@@ -97,13 +97,9 @@ class ReplyAction(BaseAction):
                 # 根据新消息数量决定是否使用reply_to
                 need_reply = new_message_count >= random.randint(2, 4)
                 if need_reply:
-                    logger.info(
-                        f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，使用引用回复"
-                    )
+                    logger.info(f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，使用引用回复")
                 else:
-                    logger.debug(
-                        f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，不使用引用回复"
-                    )
+                    logger.debug(f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，不使用引用回复")
 
             # 构建回复文本
             reply_text = ""

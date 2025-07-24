@@ -236,10 +236,14 @@ class HeartFChatting:
                 if if_think:
                     factor = max(global_config.chat.focus_value, 0.1)
                     self.energy_value *= 1.1 / factor
-                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
+                    logger.info(
+                        f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}"
+                    )
                 else:
                     self.energy_value += 0.1 / global_config.chat.focus_value
-                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
+                    logger.info(
+                        f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}"
+                    )
 
                 logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value:.1f}")
                 return True
@@ -292,7 +296,7 @@ class HeartFChatting:
         cycle_timers, thinking_id = self.start_cycle()
 
         logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考[模式：{self.loop_mode}]")
-        
+
         if ENABLE_S4U:
             await self.send_typing()
 
@@ -362,12 +366,8 @@ class HeartFChatting:
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
-                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
-                
-                
-                
-                
-                
+                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time, message_data)
+
                 if ENABLE_S4U:
                     await self.stop_typing()
                     await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
@@ -578,13 +578,9 @@ class HeartFChatting:
         need_reply = new_message_count >= random.randint(2, 4)
 
         if need_reply:
-            logger.info(
-                f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，使用引用回复"
-            )
+            logger.info(f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，使用引用回复")
         else:
-            logger.debug(
-                f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，不使用引用回复"
-            )
+            logger.debug(f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，不使用引用回复")
 
         reply_text = ""
         first_replied = False

@@ -35,7 +35,6 @@ class Individuality:
         personality_side = global_config.personality.personality_side
         identity = global_config.personality.identity
 
-
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         self.name = bot_nickname
@@ -85,16 +84,16 @@ class Individuality:
             bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
         else:
             bot_nickname = ""
-        
+
         # 从文件获取 short_impression
         personality, identity = self._get_personality_from_file()
-        
+
         # 确保short_impression是列表格式且有足够的元素
         if not personality or not identity:
             logger.warning(f"personality或identity为空: {personality}, {identity}, 使用默认值")
             personality = "友好活泼"
             identity = "人类"
-        
+
         prompt_personality = f"{personality}\n{identity}"
         return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"
 
@@ -215,7 +214,7 @@ class Individuality:
 
     def _get_personality_from_file(self) -> tuple[str, str]:
         """从文件获取personality数据
-        
+
         Returns:
             tuple: (personality, identity)
         """
@@ -226,7 +225,7 @@ class Individuality:
 
     def _save_personality_to_file(self, personality: str, identity: str):
         """保存personality数据到文件
-        
+
         Args:
             personality: 压缩后的人格描述
             identity: 压缩后的身份描述
@@ -235,7 +234,7 @@ class Individuality:
             "personality": personality,
             "identity": identity,
             "bot_nickname": self.name,
-            "last_updated": int(time.time())
+            "last_updated": int(time.time()),
         }
         self._save_personality_data(personality_data)
 

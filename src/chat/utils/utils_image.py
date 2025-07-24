@@ -110,7 +110,7 @@ class ImageManager:
                 return f"[表情包：{cached_description}]"
 
             # === 二步走识别流程 ===
-            
+
             # 第一步：VLM视觉分析 - 生成详细描述
             if image_format in ["gif", "GIF"]:
                 image_base64_processed = self.transform_gif(image_base64)
@@ -118,10 +118,16 @@ class ImageManager:
                     logger.warning("GIF转换失败，无法获取描述")
                     return "[表情包(GIF处理失败)]"
                 vlm_prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，描述一下表情包表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
-                detailed_description, _ = await self._llm.generate_response_for_image(vlm_prompt, image_base64_processed, "jpg")
+                detailed_description, _ = await self._llm.generate_response_for_image(
+                    vlm_prompt, image_base64_processed, "jpg"
+                )
             else:
-                vlm_prompt = "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
-                detailed_description, _ = await self._llm.generate_response_for_image(vlm_prompt, image_base64, image_format)
+                vlm_prompt = (
+                    "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
+                )
+                detailed_description, _ = await self._llm.generate_response_for_image(
+                    vlm_prompt, image_base64, image_format
+                )
 
             if detailed_description is None:
                 logger.warning("VLM未能生成表情包详细描述")
@@ -138,22 +144,25 @@ class ImageManager:
             3. 输出简短精准，不要解释
             4. 如果有多个词用逗号分隔
             """
-            
+
             # 使用较低温度确保输出稳定
-            emotion_llm = LLMRequest(model=global_config.model.utils, temperature=0.3, max_tokens=50, request_type="emoji")
+            emotion_llm = LLMRequest(
+                model=global_config.model.utils, temperature=0.3, max_tokens=50, request_type="emoji"
+            )
             emotion_result, _ = await emotion_llm.generate_response_async(emotion_prompt)
 
             if emotion_result is None:
                 logger.warning("LLM未能生成情感标签，使用详细描述的前几个词")
                 # 降级处理：从详细描述中提取关键词
                 import jieba
+
                 words = list(jieba.cut(detailed_description))
                 emotion_result = "，".join(words[:2]) if len(words) >= 2 else (words[0] if words else "表情")
 
             # 处理情感结果，取前1-2个最重要的标签
             emotions = [e.strip() for e in emotion_result.replace("，", ",").split(",") if e.strip()]
             final_emotion = emotions[0] if emotions else "表情"
-            
+
             # 如果有第二个情感且不重复，也包含进来
             if len(emotions) > 1 and emotions[1] != emotions[0]:
                 final_emotion = f"{emotions[0]}，{emotions[1]}"
@@ -201,7 +210,7 @@ class ImageManager:
             self._save_description_to_db(image_hash, final_emotion, "emoji")
 
             return f"[表情包：{final_emotion}]"
-            
+
         except Exception as e:
             logger.error(f"获取表情包描述失败: {str(e)}")
             return "[表情包]"

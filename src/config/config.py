@@ -331,6 +331,7 @@ class Config(ConfigBase):
     custom_prompt: CustomPromptConfig
     voice: VoiceConfig
 
+
 def load_config(config_path: str) -> Config:
     """
     加载配置文件

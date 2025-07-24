@@ -361,8 +361,10 @@ class S4UChat:
                 neg_priority, entry_count, timestamp, message = item
 
                 # 如果消息在最近N条消息范围内，保留它
-                logger.info(f"检查消息:{message.processed_plain_text},entry_count:{entry_count} cutoff_counter:{cutoff_counter}")
-                
+                logger.info(
+                    f"检查消息:{message.processed_plain_text},entry_count:{entry_count} cutoff_counter:{cutoff_counter}"
+                )
+
                 if entry_count >= cutoff_counter:
                     temp_messages.append(item)
                 else:
@@ -377,8 +379,12 @@ class S4UChat:
             self._normal_queue.put_nowait(item)
 
         if removed_count > 0:
-            logger.info(f"消息{message.processed_plain_text}超过{s4u_config.recent_message_keep_count}条，现在counter:{self._entry_counter}被移除")
-            logger.info(f"[{self.stream_name}] Cleaned up {removed_count} old normal messages outside recent {s4u_config.recent_message_keep_count} range.")
+            logger.info(
+                f"消息{message.processed_plain_text}超过{s4u_config.recent_message_keep_count}条，现在counter:{self._entry_counter}被移除"
+            )
+            logger.info(
+                f"[{self.stream_name}] Cleaned up {removed_count} old normal messages outside recent {s4u_config.recent_message_keep_count} range."
+            )
 
     async def _message_processor(self):
         """调度器：优先处理VIP队列，然后处理普通队列。"""
@@ -398,7 +404,6 @@ class S4UChat:
                     queue_name = "vip"
                 # 其次处理普通队列
                 elif not self._normal_queue.empty():
-
                     neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
                     priority = -neg_priority
                     # 检查普通消息是否超时
@@ -413,13 +418,15 @@ class S4UChat:
                     if self.internal_message:
                         message = self.internal_message[-1]
                         self.internal_message = []
-                        
+
                         priority = 0
                         neg_priority = 0
                         entry_count = 0
                         queue_name = "internal"
 
-                        logger.info(f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}...")
+                        logger.info(
+                            f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}..."
+                        )
                     else:
                         continue  # 没有消息了，回去等事件
 
@@ -473,7 +480,7 @@ class S4UChat:
 
         # 视线管理：开始生成回复时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
-        
+
         if message.is_internal:
             await chat_watching.on_internal_message_start()
         else:

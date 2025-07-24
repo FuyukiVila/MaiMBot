@@ -161,13 +161,13 @@ class ExpressionLearner:
             # 查找所有create_date为空的表达方式
             old_expressions = Expression.select().where(Expression.create_date.is_null())
             updated_count = 0
-            
+
             for expr in old_expressions:
                 # 使用last_active_time作为create_date
                 expr.create_date = expr.last_active_time
                 expr.save()
                 updated_count += 1
-            
+
             if updated_count > 0:
                 logger.info(f"已为 {updated_count} 个老的表达方式设置创建日期")
         except Exception as e:
@@ -219,25 +219,29 @@ class ExpressionLearner:
         获取指定chat_id的表达方式创建信息，按创建日期排序
         """
         try:
-            expressions = (Expression.select()
-                         .where(Expression.chat_id == chat_id)
-                         .order_by(Expression.create_date.desc())
-                         .limit(limit))
-            
+            expressions = (
+                Expression.select()
+                .where(Expression.chat_id == chat_id)
+                .order_by(Expression.create_date.desc())
+                .limit(limit)
+            )
+
             result = []
             for expr in expressions:
                 create_date = expr.create_date if expr.create_date is not None else expr.last_active_time
-                result.append({
-                    "situation": expr.situation,
-                    "style": expr.style,
-                    "type": expr.type,
-                    "count": expr.count,
-                    "create_date": create_date,
-                    "create_date_formatted": format_create_date(create_date),
-                    "last_active_time": expr.last_active_time,
-                    "last_active_formatted": format_create_date(expr.last_active_time),
-                })
-            
+                result.append(
+                    {
+                        "situation": expr.situation,
+                        "style": expr.style,
+                        "type": expr.type,
+                        "count": expr.count,
+                        "create_date": create_date,
+                        "create_date_formatted": format_create_date(create_date),
+                        "last_active_time": expr.last_active_time,
+                        "last_active_formatted": format_create_date(expr.last_active_time),
+                    }
+                )
+
             return result
         except Exception as e:
             logger.error(f"获取表达方式创建信息失败: {e}")

@@ -95,8 +95,7 @@ class MaiThinking:
         msg_recv = await self.build_internal_message_recv(self.mind)
         await self.s4u_message_processor.process_message(msg_recv)
         internal_manager.set_internal_state(self.mind)
-        
-    
+
     async def do_think_when_receive_message(self):
         pass
 

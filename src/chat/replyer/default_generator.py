@@ -30,6 +30,7 @@ from src.plugin_system.base.component_types import ActionInfo
 
 logger = get_logger("replyer")
 
+
 def init_prompt():
     Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
     Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
@@ -355,17 +356,20 @@ class DefaultReplyer:
         expression_habits_block = ""
         expression_habits_title = ""
         if style_habits_str.strip():
-            expression_habits_title = "你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
+            expression_habits_title = (
+                "你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
+            )
             expression_habits_block += f"{style_habits_str}\n"
         if grammar_habits_str.strip():
-            expression_habits_title = "你可以选择下面的句法进行回复，如果情景合适就使用，不要盲目使用,不要生硬使用，以合理的方式使用："
+            expression_habits_title = (
+                "你可以选择下面的句法进行回复，如果情景合适就使用，不要盲目使用,不要生硬使用，以合理的方式使用："
+            )
             expression_habits_block += f"{grammar_habits_str}\n"
-            
+
         if style_habits_str.strip() and grammar_habits_str.strip():
             expression_habits_title = "你可以参考以下的语言习惯和句法，如果情景合适就使用，不要盲目使用,不要生硬使用，以合理的方式结合到你的回复中："
-            
+
         expression_habits_block = f"{expression_habits_title}\n{expression_habits_block}"
-        
 
         return expression_habits_block
 
@@ -437,7 +441,7 @@ class DefaultReplyer:
 
                 tool_info_str += "以上是你获取到的实时信息，请在回复时参考这些信息。"
                 logger.info(f"获取到 {len(tool_results)} 个工具结果")
-                
+
                 return tool_info_str
             else:
                 logger.debug("未获取到任何工具结果")
@@ -668,25 +672,21 @@ class DefaultReplyer:
             self._time_and_run_task(
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
-            self._time_and_run_task(
-                self.build_relation_info(reply_data), "relation_info"
-            ),
+            self._time_and_run_task(self.build_relation_info(reply_data), "relation_info"),
             self._time_and_run_task(self.build_memory_block(chat_talking_prompt_short, target), "memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, reply_data, enable_tool=enable_tool), "tool_info"
             ),
-            self._time_and_run_task(
-                get_prompt_info(target, threshold=0.38), "prompt_info"
-            ),
+            self._time_and_run_task(get_prompt_info(target, threshold=0.38), "prompt_info"),
         )
 
         # 任务名称中英文映射
         task_name_mapping = {
             "expression_habits": "选取表达方式",
-            "relation_info": "感受关系", 
+            "relation_info": "感受关系",
             "memory_block": "回忆",
             "tool_info": "使用工具",
-            "prompt_info": "获取知识"
+            "prompt_info": "获取知识",
         }
 
         # 处理结果
@@ -779,7 +779,7 @@ class DefaultReplyer:
             core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
                 message_list_before_now_long, target_user_id
             )
-            
+
             self.build_mai_think_context(
                 chat_id=chat_id,
                 memory_block=memory_block,
@@ -796,9 +796,8 @@ class DefaultReplyer:
 --------------------------------
 {time_block}
 这是你和{sender}的对话，你们正在交流中：
-{core_dialogue_prompt}"""
+{core_dialogue_prompt}""",
             )
-            
 
             # 使用 s4u 风格的模板
             template_name = "s4u_style_prompt"
@@ -836,9 +835,9 @@ class DefaultReplyer:
                 identity_block=identity_block,
                 sender=sender,
                 target=target,
-                chat_info=chat_talking_prompt
+                chat_info=chat_talking_prompt,
             )
-            
+
             # 使用原有的模式
             return await global_prompt_manager.format_prompt(
                 template_name,
@@ -1052,9 +1051,11 @@ async def get_prompt_info(message: str, threshold: float):
             related_info += found_knowledge_from_lpmm
             logger.debug(f"获取知识库内容耗时: {(end_time - start_time):.3f}秒")
             logger.debug(f"获取知识库内容，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}")
-            
+
             # 格式化知识信息
-            formatted_prompt_info = await global_prompt_manager.format_prompt("knowledge_prompt", prompt_info=related_info)
+            formatted_prompt_info = await global_prompt_manager.format_prompt(
+                "knowledge_prompt", prompt_info=related_info
+            )
             return formatted_prompt_info
         else:
             logger.debug("从LPMM知识库获取知识失败，可能是从未导入过知识，返回空知识...")

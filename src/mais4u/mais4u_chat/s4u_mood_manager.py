@@ -447,6 +447,7 @@ class MoodManager:
         # 发送初始情绪状态到ws端
         asyncio.create_task(new_mood.send_emotion_update(new_mood.mood_values))
 
+
 if ENABLE_S4U:
     init_prompt()
     mood_manager = MoodManager()

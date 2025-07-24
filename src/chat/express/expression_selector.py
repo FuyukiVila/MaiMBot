@@ -126,28 +126,34 @@ class ExpressionSelector:
         for cid in related_chat_ids:
             style_query = Expression.select().where((Expression.chat_id == cid) & (Expression.type == "style"))
             grammar_query = Expression.select().where((Expression.chat_id == cid) & (Expression.type == "grammar"))
-            style_exprs.extend([
-                {
-                    "situation": expr.situation,
-                    "style": expr.style,
-                    "count": expr.count,
-                    "last_active_time": expr.last_active_time,
-                    "source_id": cid,
-                    "type": "style",
-                    "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
-                } for expr in style_query
-            ])
-            grammar_exprs.extend([
-                {
-                    "situation": expr.situation,
-                    "style": expr.style,
-                    "count": expr.count,
-                    "last_active_time": expr.last_active_time,
-                    "source_id": cid,
-                    "type": "grammar",
-                    "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
-                } for expr in grammar_query
-            ])
+            style_exprs.extend(
+                [
+                    {
+                        "situation": expr.situation,
+                        "style": expr.style,
+                        "count": expr.count,
+                        "last_active_time": expr.last_active_time,
+                        "source_id": cid,
+                        "type": "style",
+                        "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
+                    }
+                    for expr in style_query
+                ]
+            )
+            grammar_exprs.extend(
+                [
+                    {
+                        "situation": expr.situation,
+                        "style": expr.style,
+                        "count": expr.count,
+                        "last_active_time": expr.last_active_time,
+                        "source_id": cid,
+                        "type": "grammar",
+                        "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
+                    }
+                    for expr in grammar_query
+                ]
+            )
         style_num = int(total_num * style_percentage)
         grammar_num = int(total_num * grammar_percentage)
         # 按权重抽样（使用count作为权重）
