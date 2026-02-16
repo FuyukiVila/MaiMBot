@@ -89,6 +89,8 @@ class WebUIServer:
         try:
             with socket.socket(family, socket.SOCK_STREAM) as s:
                 s.settimeout(1)
+                # 与 Uvicorn 一致：允许在 TIME_WAIT 状态下绑定，减少误报
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 # 尝试绑定端口
                 s.bind((test_host, self.port))
                 return True
