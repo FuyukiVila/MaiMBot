@@ -28,6 +28,7 @@ log_debug/
 NapCat.Shell.Windows.OneKey
 run_amds.bat
 run_none.bat
+start_all.bat
 docs-mai/
 run.py
 message_queue_content.txt
