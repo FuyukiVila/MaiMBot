@@ -105,11 +105,11 @@ def _check_before_import_openie(non_interactive: bool = False) -> bool:
 
 
 def _warn_if_lpmm_disabled() -> None:
-    """在部分操作前提醒 lpmm_knowledge.enable 状态。"""
+    """在部分操作前提醒 memory.enable_lpmm 状态。"""
     try:
-        if not getattr(global_config.lpmm_knowledge, "enable", False):
+        if not getattr(global_config.memory, "enable_lpmm", False):
             print(
-                "[WARN] 当前配置 lpmm_knowledge.enable = false，"
+                "[WARN] 当前配置 memory.enable_lpmm = false，"
                 "刷新或检索测试可能无法在聊天侧真正启用 LPMM。"
             )
     except Exception:

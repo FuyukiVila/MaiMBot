@@ -49,7 +49,7 @@ class LPMMOperations:
         qa_mgr = get_qa_manager()
         if qa_mgr is None:
             # 如果全局没初始化，尝试初始化
-            if not global_config.lpmm_knowledge.enable:
+            if not global_config.memory.enable_lpmm:
                 logger.warning("LPMM 知识库在全局配置中未启用，操作可能受限。")
             
             lpmm_start_up()

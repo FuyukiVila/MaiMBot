@@ -37,7 +37,7 @@ def get_qa_manager():
 
 def lpmm_start_up():  # sourcery skip: extract-duplicate-method
     # 检查LPMM知识库是否启用
-    if global_config.lpmm_knowledge.enable:
+    if global_config.memory.enable_lpmm:
         logger.info("正在初始化Mai-LPMM")
         logger.info("创建LLM客户端")
 

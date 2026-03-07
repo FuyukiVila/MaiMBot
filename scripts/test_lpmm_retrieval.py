@@ -40,8 +40,8 @@ DEFAULT_TEST_CASES: List[Dict[str, Any]] = [
 
 async def run_tests(test_cases: Optional[List[Dict[str, Any]]] = None) -> None:
     """简单测试 LPMM 知识库检索能力"""
-    if not global_config.lpmm_knowledge.enable:
-        logger.warning("当前配置中 lpmm_knowledge.enable 为 False，检索测试可能直接返回“未启用”。")
+    if not global_config.memory.enable_lpmm:
+        logger.warning("当前配置中 memory.enable_lpmm 为 False，检索测试可能直接返回"未启用"。")
 
     logger.info("开始初始化 LPMM 知识库...")
     lpmm_start_up()

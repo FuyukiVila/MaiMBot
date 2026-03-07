@@ -257,30 +257,14 @@ class MessageReceiveConfig(ConfigBase):
 class MemoryConfig(ConfigBase):
     """记忆配置类"""
 
+    enable_lpmm: bool = False
+    """是否启用LPMM知识库记忆。开启后，聊天历史总结会导入到LPMM知识库，记忆检索Agent可通过search_knowledge工具查询知识库"""
+
     max_agent_iterations: int = 5
     """Agent最多迭代轮数（最低为1）"""
 
     agent_timeout_seconds: float = 120.0
     """Agent超时时间（秒）"""
-
-    global_memory: bool = False
-    """是否允许记忆检索在聊天记录中进行全局查询（忽略当前chat_id，仅对 search_chat_history 等工具生效）"""
-
-    global_memory_blacklist: list[str] = field(default_factory=lambda: [])
-    """
-    全局记忆黑名单，当启用全局记忆时，不将特定聊天流纳入检索
-    格式: ["platform:id:type", ...]
-    
-    示例:
-    [
-        "qq:1919810:private",  # 排除特定私聊
-        "qq:114514:group",     # 排除特定群聊
-    ]
-    
-    说明:
-    - 当启用全局记忆时，黑名单中的聊天流不会被检索
-    - 当在黑名单中的聊天流进行查询时，仅使用该聊天流的本地记忆
-    """
 
     chat_history_topic_check_message_threshold: int = 80
     """聊天历史话题检查的消息数量阈值，当累积消息数达到此值时触发话题检查"""
@@ -753,8 +737,6 @@ class ExperimentalConfig(ConfigBase):
     - prompt内容: 要添加的额外prompt文本
     """
 
-    lpmm_memory: bool = False
-    """是否将聊天历史总结导入到LPMM知识库。开启后，chat_history_summarizer总结出的历史记录会同时导入到知识库"""
 
 
 @dataclass
@@ -789,12 +771,6 @@ class MaimMessageConfig(ConfigBase):
 @dataclass
 class LPMMKnowledgeConfig(ConfigBase):
     """LPMM知识库配置类"""
-
-    enable: bool = True
-    """是否启用LPMM知识库"""
-
-    lpmm_mode: Literal["classic", "agent"] = "classic"
-    """LPMM知识库模式，可选：classic经典模式，agent 模式，结合最新的记忆一同使用"""
 
     rag_synonym_search_top_k: int = 10
     """RAG同义词搜索的Top K数量"""
@@ -842,101 +818,3 @@ class LPMMKnowledgeConfig(ConfigBase):
     """是否启用PPR，低配机器可关闭"""
 
 
-@dataclass
-class DreamConfig(ConfigBase):
-    """Dream配置类"""
-
-    interval_minutes: int = 30
-    """做梦时间间隔（分钟），默认30分钟"""
-
-    max_iterations: int = 20
-    """做梦最大轮次，默认20轮"""
-
-    first_delay_seconds: int = 60
-    """程序启动后首次做梦前的延迟时间（秒），默认60秒"""
-
-    dream_send: str = ""
-    """
-    做梦结果推送目标，格式为 "platform:user_id"
-    例如: "qq:123456" 表示在做梦结束后，将梦境文本额外发送给该QQ私聊用户。
-    为空字符串时不推送。
-    """
-
-    dream_time_ranges: list[str] = field(default_factory=lambda: [])
-    """
-    做梦时间段配置列表，格式：["HH:MM-HH:MM", ...]
-    如果列表为空，则表示全天允许做梦。
-    如果配置了时间段，则只有在这些时间段内才会实际执行做梦流程。
-    时间段外，调度器仍会按间隔检查，但不会进入做梦流程。
-    
-    示例:
-    [
-        "09:00-22:00",      # 白天允许做梦
-        "23:00-02:00",      # 跨夜时间段（23:00到次日02:00）
-    ]
-    
-    支持跨夜区间，例如 "23:00-02:00" 表示从23:00到次日02:00。
-    """
-
-    def _now_minutes(self) -> int:
-        """返回本地时间的分钟数(0-1439)。"""
-        lt = time.localtime()
-        return lt.tm_hour * 60 + lt.tm_min
-
-    def _parse_range(self, range_str: str) -> Optional[tuple[int, int]]:
-        """解析 "HH:MM-HH:MM" 到 (start_min, end_min)。"""
-        try:
-            start_str, end_str = [s.strip() for s in range_str.split("-")]
-            sh, sm = [int(x) for x in start_str.split(":")]
-            eh, em = [int(x) for x in end_str.split(":")]
-            return sh * 60 + sm, eh * 60 + em
-        except Exception:
-            return None
-
-    def _in_range(self, now_min: int, start_min: int, end_min: int) -> bool:
-        """
-        判断 now_min 是否在 [start_min, end_min] 区间内。
-        支持跨夜：如果 start > end，则表示跨越午夜。
-        """
-        if start_min <= end_min:
-            return start_min <= now_min <= end_min
-        # 跨夜：例如 23:00-02:00
-        return now_min >= start_min or now_min <= end_min
-
-    def is_in_dream_time(self) -> bool:
-        """
-        检查当前时间是否在允许做梦的时间段内。
-        如果 dream_time_ranges 为空，则返回 True（全天允许）。
-        """
-        if not self.dream_time_ranges:
-            return True
-
-        now_min = self._now_minutes()
-
-        for time_range in self.dream_time_ranges:
-            if not isinstance(time_range, str):
-                continue
-            parsed = self._parse_range(time_range)
-            if not parsed:
-                continue
-            start_min, end_min = parsed
-            if self._in_range(now_min, start_min, end_min):
-                return True
-
-        return False
-
-    dream_visible: bool = False
-    """
-    做梦结果是否存储到上下文
-    - True: 将梦境发送给配置的用户后，也会存储到聊天上下文中，在后续对话中可见
-    - False: 仅发送梦境但不存储，不在后续对话上下文中出现
-    """
-
-    def __post_init__(self):
-        """验证配置值"""
-        if self.interval_minutes < 1:
-            raise ValueError(f"interval_minutes 必须至少为1，当前值: {self.interval_minutes}")
-        if self.max_iterations < 1:
-            raise ValueError(f"max_iterations 必须至少为1，当前值: {self.max_iterations}")
-        if self.first_delay_seconds < 0:
-            raise ValueError(f"first_delay_seconds 不能为负数，当前值: {self.first_delay_seconds}")

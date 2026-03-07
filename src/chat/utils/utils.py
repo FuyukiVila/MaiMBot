@@ -331,6 +331,17 @@ def split_into_sentences_w_remove_punctuation(text: str) -> list[str]:
                         if prev_is_alnum and next_is_alnum:
                             can_split = False
 
+                    # 如果分割点前后一个是英文、一个是中文，则不分割（避免中英混排时断开）
+                    if can_split and i > 0 and i < len(text) - 1:
+                        prev_char = text[i - 1]
+                        next_char = text[i + 1]
+                        prev_is_english = is_english_letter(prev_char)
+                        next_is_english = is_english_letter(next_char)
+                        prev_is_chinese = "\u4e00" <= prev_char <= "\u9fff"
+                        next_is_chinese = "\u4e00" <= next_char <= "\u9fff"
+                        if (prev_is_english and next_is_chinese) or (prev_is_chinese and next_is_english):
+                            can_split = False
+
             if can_split:
                 # 只有当当前段不为空时才添加
                 if current_segment:

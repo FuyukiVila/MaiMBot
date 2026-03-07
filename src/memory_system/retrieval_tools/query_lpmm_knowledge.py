@@ -30,7 +30,7 @@ async def query_lpmm_knowledge(query: str, limit: int = 5) -> str:
             limit_value = 5
         limit_value = max(1, limit_value)
 
-        if not global_config.lpmm_knowledge.enable:
+        if not global_config.memory.enable_lpmm:
             logger.debug("LPMM知识库未启用")
             return "LPMM知识库未启用"
 
@@ -53,10 +53,10 @@ async def query_lpmm_knowledge(query: str, limit: int = 5) -> str:
 
 
 def register_tool():
-    """注册LPMM知识库查询工具"""
+    """注册知识库查询工具"""
     register_memory_retrieval_tool(
-        name="lpmm_search_knowledge",
-        description="从知识库中搜索相关信息，适用于需要知识支持的场景。使用自然语言问句检索",
+        name="search_knowledge",
+        description="从知识库中搜索相关信息，可以查询过往事件、过去提到过的概念、某段时间发生的事件等。使用自然语言问句检索",
         parameters=[
             {
                 "name": "query",

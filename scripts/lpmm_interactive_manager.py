@@ -184,7 +184,7 @@ async def interactive_search():
     print("-" * 40)
     
     # 确保 LPMM 已初始化
-    if not global_config.lpmm_knowledge.enable:
+    if not global_config.memory.enable_lpmm:
         print("\n[!] 警告：LPMM 知识库在配置中未启用。")
         return
     

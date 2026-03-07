@@ -23,7 +23,6 @@ from src.plugin_system.core.plugin_manager import plugin_manager
 
 # 导入消息API和traceback模块
 from src.common.message import get_global_api
-from src.dream.dream_agent import start_dream_scheduler
 from src.bw_learner.expression_auto_check_task import ExpressionAutoCheckTask
 
 # 插件系统现在使用统一的插件加载器
@@ -138,7 +137,6 @@ class MainSystem:
         try:
             tasks = [
                 get_emoji_manager().start_periodic_check_register(),
-                start_dream_scheduler(),
                 self.app.run(),
                 self.server.run(),
             ]

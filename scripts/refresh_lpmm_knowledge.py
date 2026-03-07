@@ -22,9 +22,9 @@ logger = get_logger("refresh_lpmm_knowledge")
 def main() -> None:
     logger.info("开始刷新 LPMM 知识库（重新加载向量库与 KG）...")
 
-    if not global_config.lpmm_knowledge.enable:
+    if not global_config.memory.enable_lpmm:
         logger.warning(
-            "当前配置中 lpmm_knowledge.enable = false，本次仅刷新磁盘数据与内存结构，"
+            "当前配置中 memory.enable_lpmm = false，本次仅刷新磁盘数据与内存结构，"
             "但聊天侧如未启用 LPMM 仍不会在问答中使用知识库。"
         )
 

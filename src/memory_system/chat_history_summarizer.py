@@ -1005,7 +1005,7 @@ class ChatHistorySummarizer:
                 logger.warning(f"{self.log_prefix} 存储聊天历史记录到数据库失败")
 
             # 如果配置开启，同时导入到LPMM知识库
-            if global_config.lpmm_knowledge.enable and global_config.experimental.lpmm_memory:
+            if global_config.memory.enable_lpmm:
                 await self._import_to_lpmm_knowledge(
                     theme=theme,
                     summary=summary,

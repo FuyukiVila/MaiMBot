@@ -32,13 +32,11 @@ from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
 
 from src.chat.logger.plan_reply_logger import PlanReplyLogger
-from src.chat.replyer.prompt.lpmm_prompt import init_lpmm_prompt
 from src.chat.replyer.prompt.replyer_prompt import init_replyer_prompt
 from src.chat.replyer.prompt.rewrite_prompt import init_rewrite_prompt
 from src.memory_system.memory_retrieval import init_memory_retrieval_prompt, build_memory_retrieval_prompt
 from src.bw_learner.jargon_explainer import explain_jargon_in_context, retrieve_concepts_with_jargon
 
-init_lpmm_prompt()
 init_replyer_prompt()
 init_rewrite_prompt()
 init_memory_retrieval_prompt()
@@ -1146,63 +1144,8 @@ class DefaultReplyer:
         return content, reasoning_content, model_name, tool_calls
 
     async def get_prompt_info(self, message: str, sender: str, target: str):
-        related_info = ""
-        start_time = time.time()
-        from src.plugins.built_in.knowledge.lpmm_get_knowledge import SearchKnowledgeFromLPMMTool
-
-        logger.debug(f"获取知识库内容，元消息：{message[:30]}...，消息长度: {len(message)}")
-        # 从LPMM知识库获取知识
-        try:
-            # 检查LPMM知识库是否启用
-            if not global_config.lpmm_knowledge.enable:
-                logger.debug("LPMM知识库未启用，跳过获取知识库内容")
-                return ""
-
-            if global_config.lpmm_knowledge.lpmm_mode == "agent":
-                return ""
-
-            time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-
-            bot_name = global_config.bot.nickname
-
-            prompt = await global_prompt_manager.format_prompt(
-                "lpmm_get_knowledge_prompt",
-                bot_name=bot_name,
-                time_now=time_now,
-                chat_history=message,
-                sender=sender,
-                target_message=target,
-            )
-            _, _, _, _, tool_calls = await llm_api.generate_with_model_with_tools(
-                prompt,
-                model_config=model_config.model_task_config.tool_use,
-                tool_options=[SearchKnowledgeFromLPMMTool.get_tool_definition()],
-            )
-
-            # logger.info(f"工具调用提示词: {prompt}")
-            # logger.info(f"工具调用: {tool_calls}")
-
-            if tool_calls:
-                result = await self.tool_executor.execute_tool_call(tool_calls[0], SearchKnowledgeFromLPMMTool())
-                end_time = time.time()
-                if not result or not result.get("content"):
-                    logger.debug("从LPMM知识库获取知识失败，返回空知识...")
-                    return ""
-                found_knowledge_from_lpmm = result.get("content", "")
-                logger.info(
-                    f"从LPMM知识库获取知识，相关信息：{found_knowledge_from_lpmm[:100]}...，信息长度: {len(found_knowledge_from_lpmm)}"
-                )
-                related_info += found_knowledge_from_lpmm
-                logger.debug(f"获取知识库内容耗时: {(end_time - start_time):.3f}秒")
-                logger.debug(f"获取知识库内容，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}")
-
-                return f"你有以下这些**知识**：\n{related_info}\n请你**记住上面的知识**，之后可能会用到。\n"
-            else:
-                logger.debug("模型认为不需要使用LPMM知识库")
-                return ""
-        except Exception as e:
-            logger.error(f"获取知识库内容时发生异常: {str(e)}")
-            return ""
+        """获取知识库内容（已迁移至 ReAct Agent 的 search_knowledge 工具）"""
+        return ""
 
 
 def weighted_sample_no_replacement(items, weights, k) -> list:
