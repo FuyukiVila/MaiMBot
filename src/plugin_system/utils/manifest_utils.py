@@ -41,10 +41,10 @@ class VersionComparator:
 
     @staticmethod
     def normalize_version(version: str) -> str:
-        """标准化版本号，移除snapshot标识
+        """标准化版本号，提取语义化版本主干
 
         Args:
-            version: 原始版本号，如 "0.8.0-snapshot.1"
+            version: 原始版本号，如 "0.8.0-snapshot.1" 或 "0.13.0-sakana"
 
         Returns:
             str: 标准化后的版本号，如 "0.8.0"
@@ -52,13 +52,12 @@ class VersionComparator:
         if not version:
             return "0.0.0"
 
-        # 移除snapshot部分
-        normalized = re.sub(r"-snapshot\.\d+", "", version.strip())
-
-        # 确保版本号格式正确
-        if not re.match(r"^\d+(\.\d+){0,2}$", normalized):
-            # 如果不是有效的版本号格式，返回默认版本
+        # 兼容常见语义化版本后缀（如 -alpha.1 / -snapshot.1 / -sakana / +build.5）
+        # 仅提取前导版本主干，例如 "0.13.0-sakana" -> "0.13.0"
+        match = re.match(r"^\s*(\d+(?:\.\d+){0,2})", str(version))
+        if not match:
             return "0.0.0"
+        normalized = match.group(1)
 
         # 尝试补全版本号
         parts = normalized.split(".")
