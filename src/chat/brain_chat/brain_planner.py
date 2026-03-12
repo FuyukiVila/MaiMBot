@@ -41,6 +41,7 @@ def init_prompt():
         """
 {time_block}
 {name_block}
+{personality_block}
 {chat_context_description}，以下是具体的聊天内容
 
 **聊天内容**
@@ -349,6 +350,17 @@ class BrainPlanner:
 
         return actions
 
+    def _build_personality_block(self) -> str:
+        """构建规划器的人格提示信息（与replyer一致读取personality配置）"""
+        prompt_personality = global_config.personality.personality
+        if (
+            global_config.personality.states
+            and global_config.personality.state_probability > 0
+            and random.random() < global_config.personality.state_probability
+        ):
+            prompt_personality += random.choice(global_config.personality.states)
+        return f"你的人格设定：{prompt_personality}"
+
     async def build_planner_prompt(
         self,
         chat_target_info: Optional["TargetPersonInfo"],
@@ -390,6 +402,7 @@ class BrainPlanner:
                 f",也可以叫你{','.join(global_config.bot.alias_names)}" if global_config.bot.alias_names else ""
             )
             name_block = f"你的名字是{bot_name}{bot_nickname}，请注意哪些是你自己的发言。"
+            personality_block = self._build_personality_block()
 
             # 获取主规划器模板并填充
             planner_prompt_template = await global_prompt_manager.get_prompt_async(prompt_key)
@@ -401,6 +414,7 @@ class BrainPlanner:
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
                 name_block=name_block,
+                personality_block=personality_block,
                 interest=interest,
                 plan_style=global_config.experimental.private_plan_style,
             )

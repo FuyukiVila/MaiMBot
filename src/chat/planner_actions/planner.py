@@ -40,6 +40,7 @@ def init_prompt():
         """
 {time_block}
 {name_block}
+{personality_block}
 {chat_context_description}，以下是具体的聊天内容
 **聊天内容**
 {chat_content_block}
@@ -318,6 +319,17 @@ class ActionPlanner:
             logger.warning(f"{self.log_prefix}检测消息发送者失败，缺少必要字段")
             return False
 
+    def _build_personality_block(self) -> str:
+        """构建规划器的人格提示信息（与replyer一致读取personality配置）"""
+        prompt_personality = global_config.personality.personality
+        if (
+            global_config.personality.states
+            and global_config.personality.state_probability > 0
+            and random.random() < global_config.personality.state_probability
+        ):
+            prompt_personality += random.choice(global_config.personality.states)
+        return f"你的人格设定：{prompt_personality}"
+
     async def plan(
         self,
         available_actions: Dict[str, ActionInfo],
@@ -518,6 +530,7 @@ class ActionPlanner:
                 f",也有人叫你{','.join(global_config.bot.alias_names)}" if global_config.bot.alias_names else ""
             )
             name_block = f"你的名字是{bot_name}{bot_nickname}，请注意哪些是你自己的发言。"
+            personality_block = self._build_personality_block()
 
             # 根据 think_mode 配置决定 reply action 的示例 JSON
             # 在 JSON 中直接作为 action 参数携带 unknown_words 和 question
@@ -558,6 +571,7 @@ class ActionPlanner:
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
                 name_block=name_block,
+                personality_block=personality_block,
                 interest=interest,
                 plan_style=global_config.personality.plan_style,
                 reply_action_example=reply_action_example,
