@@ -3,6 +3,7 @@ from src.chat.utils.prompt_builder import Prompt
 
 
 def init_replyer_prompt():
+    # 原有模板保留用于兼容
     Prompt(
         """{knowledge_prompt}{tool_info_block}{extra_info_block}
 {expression_habits_block}{memory_retrieval}{jargon_explanation}
@@ -45,4 +46,38 @@ def init_replyer_prompt():
 请注意不要输出多余内容(包括不必要的前后缀，冒号，括号，at或 @等 )，只输出发言内容就好。
 现在，你说：""",
         "replyer_prompt",
+    )
+
+    # 新增：多轮对话模式的 System 模板 (think_level=0)
+    Prompt(
+        """{knowledge_prompt}{tool_info_block}{extra_info_block}
+{expression_habits_block}{memory_retrieval}{jargon_explanation}
+
+{identity}
+{chat_prompt}你正在群里聊天，请根据聊天记录给出日常且口语化的回复，
+尽量简短一些。{keywords_reaction_prompt}
+请注意把握聊天内容，不要回复的太有条理。
+{reply_style}
+请注意不要输出多余内容(包括不必要的前后缀，冒号，括号，表情包，at或 @等 )，只输出发言内容就好。
+最好一次对一个话题进行回复，免得啰嗦或者回复内容太乱。
+
+以下是对话历史，其中标注 {bot_name}(你) 的发言是你自己的发言，请注意区分。""",
+        "replyer_system_0",
+    )
+
+    # 新增：多轮对话模式的 System 模板 (think_level=1)
+    Prompt(
+        """{knowledge_prompt}{tool_info_block}{extra_info_block}
+{expression_habits_block}{memory_retrieval}{jargon_explanation}
+
+{identity}
+{chat_prompt}你正在群里聊天，请根据聊天记录把握当前的话题，然后给出日常且简短的回复。
+最好一次对一个话题进行回复，免得啰嗦或者回复内容太乱。
+{keywords_reaction_prompt}
+请注意把握聊天内容。
+{reply_style}
+请注意不要输出多余内容(包括不必要的前后缀，冒号，括号，at或 @等 )，只输出发言内容就好。
+
+以下是对话历史，其中标注 {bot_name}(你) 的发言是你自己的发言，请注意区分。""",
+        "replyer_system",
     )

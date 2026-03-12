@@ -1,5 +1,5 @@
 [inner]
-version = "7.4.3"
+version = "7.4.5"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 # 如果你想要修改配置文件，请递增version的值
@@ -107,6 +107,10 @@ plan_reply_log_max_per_chat = 1024 # 每个聊天保存最大的Plan/Reply日志
 llm_quote = false # 是否由llm执行引用
 
 enable_talk_value_rules = true # 是否启用动态发言频率规则
+
+enable_multi_turn = false # 是否启用多轮对话模式（将聊天历史拆分为 user/assistant 消息而非单一 prompt）
+
+self_sign = true # 是否在多轮对话模式下显示 bot 自己发言时的"bot_name(你):"前缀，关闭后直接展示发言内容
 
 # 动态发言频率规则：按时段/按chat_id调整 talk_value（优先匹配具体chat，再匹配全局）
 # 推荐格式（对象数组）：{ target="platform:id:type" 或 "", time="HH:MM-HH:MM", value=0.5 }

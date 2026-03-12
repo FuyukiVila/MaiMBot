@@ -12,11 +12,12 @@ from src.common.data_models.info_data_model import ActionPlannerInfo
 from src.common.data_models.llm_data_model import LLMGenerationDataModel
 from src.config.config import global_config, model_config
 from src.llm_models.utils_model import LLMRequest
+from src.llm_models.payload_content.message import MessageBuilder, Message, RoleType
 from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.uni_message_sender import UniversalMessageSender
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.utils.utils import get_chat_type_and_target_info, is_bot_self
+from src.chat.utils.utils import get_chat_type_and_target_info, is_bot_self, translate_timestamp_to_human_readable
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_messages,
@@ -74,6 +75,7 @@ class DefaultReplyer:
         think_level: int = 1,
         unknown_words: Optional[List[str]] = None,
         log_reply: bool = True,
+        use_multi_turn: Optional[bool] = None,
     ) -> Tuple[bool, LLMGenerationDataModel]:
         # sourcery skip: merge-nested-ifs
         """
@@ -87,6 +89,7 @@ class DefaultReplyer:
             chosen_actions: 已选动作
             enable_tool: 是否启用工具调用
             from_plugin: 是否来自插件
+            use_multi_turn: 是否使用多轮对话模式
 
         Returns:
             Tuple[bool, Optional[Dict[str, Any]], Optional[str]]: (是否成功, 生成的回复, 使用的prompt)
@@ -100,6 +103,11 @@ class DefaultReplyer:
         llm_response = LLMGenerationDataModel()
         if available_actions is None:
             available_actions = {}
+
+        # 处理 use_multi_turn 参数：如果为 None，从配置中读取
+        if use_multi_turn is None:
+            use_multi_turn = global_config.chat.enable_multi_turn
+
         try:
             # 3. 构建 Prompt
             timing_logs = []
@@ -116,9 +124,21 @@ class DefaultReplyer:
                     reply_time_point=reply_time_point,
                     think_level=think_level,
                     unknown_words=unknown_words,
+                    use_multi_turn=use_multi_turn,
                 )
             prompt_duration_ms = (time.perf_counter() - prompt_start) * 1000
-            llm_response.prompt = prompt
+
+            # 处理消息列表用于日志记录
+            prompt_for_log = None  # 初始化变量
+            if isinstance(prompt, list):
+                # 多轮对话模式：格式化消息列表用于日志
+                prompt_for_log = self._format_messages_for_log(prompt)
+                llm_response.prompt = prompt_for_log
+                llm_response.messages = prompt  # 保存原始消息列表
+            else:
+                # 单 prompt 模式
+                llm_response.prompt = prompt
+                prompt_for_log = prompt  # 用于后续事件处理
             llm_response.selected_expressions = selected_expressions
             llm_response.timing = {
                 "prompt_ms": round(prompt_duration_ms or 0.0, 2),
@@ -151,15 +171,22 @@ class DefaultReplyer:
                 return False, llm_response
             from src.plugin_system.core.events_manager import events_manager
 
+            # 保存原始prompt用于事件处理
+            original_prompt = prompt
+
             if not from_plugin:
+                # 对于多轮对话模式，传递格式化后的字符串用于插件处理
+                prompt_for_event = prompt_for_log if isinstance(prompt, list) else prompt
                 continue_flag, modified_message = await events_manager.handle_mai_events(
-                    EventType.POST_LLM, None, prompt, None, stream_id=stream_id
+                    EventType.POST_LLM, None, prompt_for_event, None, stream_id=stream_id
                 )
                 if not continue_flag:
                     raise UserWarning("插件于请求前中断了内容生成")
                 if modified_message and modified_message._modify_flags.modify_llm_prompt:
-                    llm_response.prompt = modified_message.llm_prompt
-                    prompt = str(modified_message.llm_prompt)
+                    # 多轮对话模式下不支持插件修改prompt
+                    if not isinstance(prompt, list):
+                        llm_response.prompt = modified_message.llm_prompt
+                        prompt = str(modified_message.llm_prompt)
 
             # 4. 调用 LLM 生成回复
             content = None
@@ -168,7 +195,8 @@ class DefaultReplyer:
 
             try:
                 llm_start = time.perf_counter()
-                content, reasoning_content, model_name, tool_call = await self.llm_generate_content(prompt)
+                # 使用原始prompt（可能是字符串或消息列表）
+                content, reasoning_content, model_name, tool_call = await self.llm_generate_content(original_prompt)
                 llm_duration_ms = (time.perf_counter() - llm_start) * 1000
                 # logger.debug(f"replyer生成内容: {content}")
 
@@ -179,9 +207,9 @@ class DefaultReplyer:
                     logger.info(timing_log_str)
                     # 2. 输出Prompt日志
                     if global_config.debug.show_replyer_prompt:
-                        logger.info(f"\n{prompt}\n")
+                        logger.info(f"\n{prompt_for_log}\n")
                     else:
-                        logger.debug(f"\nreplyer_Prompt:{prompt}\n")
+                        logger.debug(f"\nreplyer_Prompt:{prompt_for_log}\n")
                     # 3. 输出模型生成内容和推理日志
                     logger.info(f"模型: [{model_name}][思考等级:{think_level}]生成内容: {content}")
                     if global_config.debug.show_replyer_reasoning and reasoning_content:
@@ -238,9 +266,9 @@ class DefaultReplyer:
                     logger.info(timing_log_str)
                     # 2. 输出Prompt日志
                     if global_config.debug.show_replyer_prompt:
-                        logger.info(f"\n{prompt}\n")
+                        logger.info(f"\n{prompt_for_log}\n")
                     else:
-                        logger.debug(f"\nreplyer_Prompt:{prompt}\n")
+                        logger.debug(f"\nreplyer_Prompt:{prompt_for_log}\n")
                     # 3. 输出模型生成失败信息
                     logger.info("模型生成失败，无法输出生成内容和推理")
                 except Exception as log_e:
@@ -505,6 +533,147 @@ class DefaultReplyer:
 
         return has_only_pics, has_text, pic_part, text_without_picids
 
+    def _format_single_message(
+        self,
+        msg: DatabaseMessages,
+        bot_user_id: str,
+        bot_platform: str,
+    ) -> str:
+        """格式化单条消息内容
+
+        Args:
+            msg: 消息对象
+            bot_user_id: 机器人用户ID（未使用，保留用于兼容性）
+            bot_platform: 机器人平台（未使用，保留用于兼容性）
+
+        Returns:
+            str: 格式化后的消息内容
+        """
+        try:
+            user_id = msg.user_info.user_id
+            platform = msg.user_info.platform
+            is_bot = is_bot_self(platform, user_id)
+
+            # 获取消息内容
+            content = msg.processed_plain_text or ""
+            # 处理图片ID
+            content = self._replace_picids_with_descriptions(content)
+            # 处理用户引用
+            content = replace_user_references(content, platform, replace_bot_name=True)
+
+            # 获取时间戳
+            msg_time = msg.time if msg.time else time.time()
+            readable_time = translate_timestamp_to_human_readable(msg_time, mode="normal_no_YMD")
+
+            if is_bot and not global_config.chat.self_sign:
+                # bot 自己的发言，不显示签名前缀
+                return f"{readable_time}: {content}"
+
+            # 获取用户名称
+            person = Person(platform=platform, user_id=user_id)
+            if is_bot:
+                # bot自己的发言，显示为"你"
+                person_name = f"{global_config.bot.nickname}(你)"
+            else:
+                person_name = person.person_name or msg.user_info.user_nickname or "某人"
+
+            # 格式化为：时间, 人名: 内容
+            return f"{readable_time}, {person_name}: {content}"
+        except Exception as e:
+            logger.warning(f"格式化消息失败: {e}")
+            return ""
+
+    def _build_conversation_messages(
+        self,
+        messages: List[DatabaseMessages],
+        reply_target_block: str,
+        planner_reasoning: str,
+        bot_user_id: str,
+        bot_platform: str,
+    ) -> List[Message]:
+        """将聊天记录转换为多轮对话消息列表
+
+        拆分规则：
+        - 从第一条消息开始，所有非bot发言合并为一条 user message
+        - 遇到bot发言，作为一条 assistant message
+        - 继续交替直到最后
+        - 最后一条 user message 包含 reply_target_block 和 planner_reasoning
+
+        Args:
+            messages: 聊天记录列表
+            reply_target_block: 回复目标块
+            planner_reasoning: 规划推理
+            bot_user_id: 机器人用户ID
+            bot_platform: 机器人平台
+
+        Returns:
+            List[Message]: 多轮对话消息列表
+        """
+
+        conversation = []
+        current_user_contents = []
+
+        for msg in messages:
+            is_bot = is_bot_self(msg.user_info.platform, msg.user_info.user_id)
+
+            if not is_bot:
+                # 非bot发言，累积到当前user消息
+                formatted_msg = self._format_single_message(msg, bot_user_id, bot_platform)
+                if formatted_msg:
+                    current_user_contents.append(formatted_msg)
+            else:
+                # bot发言，先保存之前的user消息（如果有）
+                if current_user_contents:
+                    user_msg = "\n".join(current_user_contents)
+                    builder = MessageBuilder()
+                    builder.set_role(RoleType.User)
+                    builder.add_text_content(user_msg)
+                    conversation.append(builder.build())
+                    current_user_contents = []
+
+                # 添加bot的assistant消息
+                bot_content = self._format_single_message(msg, bot_user_id, bot_platform)
+                if bot_content:
+                    builder = MessageBuilder()
+                    builder.set_role(RoleType.Assistant)
+                    builder.add_text_content(bot_content)
+                    conversation.append(builder.build())
+
+        # 处理最后一条user消息（包含回复目标和推理）
+        final_user_content = ""
+        if current_user_contents:
+            final_user_content = "\n".join(current_user_contents) + "\n\n"
+
+        # 添加回复目标和推理
+        final_user_content += f"{reply_target_block}\n{planner_reasoning}\n不要输出前缀时间戳，不要输出[回复]前缀，直接输出回复内容："
+
+        builder = MessageBuilder()
+        builder.set_role(RoleType.User)
+        builder.add_text_content(final_user_content)
+        conversation.append(builder.build())
+
+        return conversation
+
+    def _format_messages_for_log(self, messages: List[Message]) -> str:
+        """将消息列表格式化为字符串用于日志记录
+
+        Args:
+            messages: 消息列表
+
+        Returns:
+            str: 格式化后的日志字符串
+        """
+        lines = []
+        for i, msg in enumerate(messages):
+            role_name = msg.role.value
+            content = msg.content if isinstance(msg.content, str) else "[多媒体内容]"
+            lines.append(f"{'='*40}")
+            lines.append(f"[消息 {i+1}] 角色: {role_name}")
+            lines.append(f"{'-'*40}")
+            lines.append(f"{content}\n")
+        lines.append(f"{'='*40}")
+        return "\n".join(lines)
+
     async def build_keywords_reaction_prompt(self, target: Optional[str]) -> str:
         """构建关键词反应提示
 
@@ -755,7 +924,8 @@ class DefaultReplyer:
         reply_time_point: Optional[float] = time.time(),
         think_level: int = 1,
         unknown_words: Optional[List[str]] = None,
-    ) -> Tuple[str, List[int], List[str], str]:
+        use_multi_turn: bool = False,
+    ) -> Tuple[str | List[Message], List[int], List[str], str]:
         """
         构建回复器上下文
 
@@ -767,8 +937,10 @@ class DefaultReplyer:
             enable_timeout: 是否启用超时处理
             enable_tool: 是否启用工具调用
             reply_message: 回复的原始消息
+            use_multi_turn: 是否使用多轮对话模式
+
         Returns:
-            str: 构建好的上下文
+            Union[str, List[Message]]: 构建好的上下文（单prompt或消息列表）
         """
         if available_actions is None:
             available_actions = {}
@@ -965,6 +1137,58 @@ class DefaultReplyer:
                 # 兜底：即使 multiple_reply_style 配置异常也不影响正常回复
                 reply_style = global_config.personality.reply_style
 
+        # 多轮对话模式
+        if use_multi_turn:
+            # 选择 system 模板名
+            if think_level == 0:
+                system_prompt_name = "replyer_system_0"
+            else:
+                system_prompt_name = "replyer_system"
+
+            # 构建 system prompt
+            system_prompt = await global_prompt_manager.format_prompt(
+                system_prompt_name,
+                expression_habits_block=expression_habits_block,
+                tool_info_block=tool_info,
+                bot_name=global_config.bot.nickname,
+                knowledge_prompt=prompt_info,
+                extra_info_block=extra_info_block,
+                jargon_explanation=jargon_explanation,
+                identity=personality_prompt,
+                action_descriptions=actions_info,
+                reply_style=reply_style,
+                keywords_reaction_prompt=keywords_reaction_prompt,
+                memory_retrieval=memory_retrieval,
+                chat_prompt=chat_prompt_block,
+            )
+
+            # 构建 system message
+            system_builder = MessageBuilder()
+            system_builder.set_role(RoleType.System)
+            system_builder.add_text_content(system_prompt)
+            messages = [system_builder.build()]
+
+            # 构建对话历史消息
+            if message_list_before_now_long:
+                latest_msgs = message_list_before_now_long[-int(global_config.chat.max_context_size) :]
+                conversation_messages = self._build_conversation_messages(
+                    messages=latest_msgs,
+                    reply_target_block=reply_target_block,
+                    planner_reasoning=planner_reasoning,
+                    bot_user_id=global_config.bot.qq_account,
+                    bot_platform=global_config.bot.platform,
+                )
+                messages.extend(conversation_messages)
+            else:
+                # 没有历史消息，只添加回复目标
+                user_builder = MessageBuilder()
+                user_builder.set_role(RoleType.User)
+                user_builder.add_text_content(f"{reply_target_block}\n{planner_reasoning}")
+                messages.append(user_builder.build())
+
+            return messages, selected_expressions, timing_logs, almost_zero_str
+
+        # 原有单 prompt 模式（兼容）
         return await global_prompt_manager.format_prompt(
             prompt_name,
             expression_habits_block=expression_habits_block,
@@ -1122,7 +1346,7 @@ class DefaultReplyer:
             display_message=display_message,
         )
 
-    async def llm_generate_content(self, prompt: str):
+    async def llm_generate_content(self, prompt: str | List[Message]):
         with Timer("LLM生成", {}):  # 内部计时器，可选保留
             # 直接使用已初始化的模型实例
             # logger.info(f"\n{prompt}\n")
@@ -1133,9 +1357,16 @@ class DefaultReplyer:
             # else:
             #     logger.debug(f"\nreplyer_Prompt:{prompt}\n")
 
-            content, (reasoning_content, model_name, tool_calls) = await self.express_model.generate_response_async(
-                prompt
-            )
+            # 判断是单prompt还是消息列表
+            if isinstance(prompt, str):
+                content, (reasoning_content, model_name, tool_calls) = await self.express_model.generate_response_async(
+                    prompt
+                )
+            else:
+                # 使用消息列表（多轮对话）
+                content, (reasoning_content, model_name, tool_calls) = await self.express_model.generate_response_with_message_async(
+                    message_factory=lambda client: prompt,
+                )
 
             # 移除 content 前后的换行符和空格
             content = content.strip()

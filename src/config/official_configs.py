@@ -125,6 +125,12 @@ class ChatConfig(ConfigBase):
     llm_quote: bool = False
     """是否在 reply action 中启用 quote 参数，启用后 LLM 可以控制是否引用消息"""
 
+    enable_multi_turn: bool = False
+    """是否启用多轮对话模式（将聊天历史拆分为 user/assistant 消息而非单一 prompt）"""
+
+    self_sign: bool = True
+    """是否在多轮对话模式下显示 bot 自己发言时的"bot_name(你):"前缀"""
+
     def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> Optional[str]:
         """与 ChatStream.get_stream_id 一致地从 "platform:id:type" 生成 chat_id。"""
         try:
