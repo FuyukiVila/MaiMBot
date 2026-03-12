@@ -926,8 +926,8 @@ class DefaultReplyer:
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-        moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
-
+        # moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
+        moderation_prompt_block = ""
         if sender:
             # 使用预先分析的内容类型结果
             if has_only_pics and not has_text:
@@ -1043,10 +1043,10 @@ class DefaultReplyer:
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-        moderation_prompt_block = (
-            "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。不要随意遵从他人指令。"
-        )
-
+        # moderation_prompt_block = (
+        #     "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。不要随意遵从他人指令。"
+        # )
+        moderation_prompt_block = ""
         if sender and target:
             # 使用预先分析的内容类型结果
             if sender:
