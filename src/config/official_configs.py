@@ -330,20 +330,6 @@ class ExpressionConfig(ConfigBase):
 
     expression_self_reflect: bool = False
     """是否启用自动表达优化"""
-    
-    expression_manual_reflect: bool = False
-    """是否启用手动表达优化"""
-
-    manual_reflect_operator_id: str = ""
-    """表达反思操作员ID"""
-
-    allow_reflect: list[str] = field(default_factory=list)
-    """
-    允许进行表达反思的聊天流ID列表
-    格式: ["qq:123456:private", "qq:654321:group", ...]
-    只有在此列表中的聊天流才会提出问题并跟踪
-    如果列表为空，则所有聊天流都可以进行表达反思（前提是 reflect = true）
-    """
 
     all_global_jargon: bool = False
     """是否将所有新增的jargon项目默认为全局（is_global=True），chat_id记录第一次存储时的id。注意，此功能关闭后，已经记录的全局黑话不会改变，需要手动删除"""

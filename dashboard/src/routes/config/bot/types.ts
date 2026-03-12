@@ -39,9 +39,6 @@ export interface ChatConfig {
 export interface ExpressionConfig {
   learning_list: Array<[string, string, string, string]>
   expression_groups: Array<string[]>
-  expression_manual_reflect: boolean
-  manual_reflect_operator_id: string
-  allow_reflect: string[]
   expression_self_reflect: boolean
   expression_auto_check_interval: number
   expression_auto_check_count: number
