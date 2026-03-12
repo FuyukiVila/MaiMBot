@@ -67,7 +67,7 @@ class GoalAnalyzer:
             and global_config.personality.state_probability > 0
             and random.random() < global_config.personality.state_probability
         ):
-            prompt_personality = random.choice(global_config.personality.states)
+            prompt_personality += random.choice(global_config.personality.states)
         
         bot_name = global_config.bot.nickname
         return f"你的名字是{bot_name},你{prompt_personality};"
