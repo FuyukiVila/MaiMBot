@@ -837,7 +837,7 @@ class DefaultReplyer:
         ):
             # 随机选择一个状态替换personality
             selected_state = random.choice(global_config.personality.states)
-            prompt_personality = selected_state
+            prompt_personality += selected_state
 
         prompt_personality = f"{prompt_personality};"
         return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"
