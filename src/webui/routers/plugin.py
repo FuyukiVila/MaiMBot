@@ -128,7 +128,7 @@ def parse_version(version_str: str) -> tuple[int, int, int]:
     import re
 
     # 匹配 -snapshot.X, .snapshot, -dev, .dev, -alpha, .alpha, -beta, .beta 等后缀
-    base_version = re.split(r"[-.](?:snapshot|dev|alpha|beta|rc)", version_str, flags=re.IGNORECASE)[0]
+    base_version = re.split(r"[-.](?:snapshot|dev|alpha|beta|rc|sakana)", version_str, flags=re.IGNORECASE)[0]
 
     parts = base_version.split(".")
     if len(parts) < 3:
